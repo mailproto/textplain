@@ -214,3 +214,12 @@ func TestStripsNonContentTags(t *testing.T) {
 
 	checkConvertToText(t, "No hacks here\n\nThis is not a bold statement", html)
 }
+
+func TestMultilineTitles(t *testing.T) {
+	html := `<h1>Horse
+              Friends
+                              Yeah
+</h1>`
+
+	checkConvertToText(t, "*******\nHorse\nFriends\nYeah\n*******", html)
+}

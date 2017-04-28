@@ -17,7 +17,7 @@ var (
 	imgAltSingleQuotes    = regexp.MustCompile(`(?i)<img.+?alt=\'([^\']*)\'[^>]*\>`)
 	links                 = regexp.MustCompile(`(?i)<a\s.*?href=["'](mailto:)?([^"']*)["'][^>]*>((.|\s)*?)<\/a>`)
 	headerClose           = regexp.MustCompile(`(?i)(<\/h[1-6]>)`)
-	headerBlock           = regexp.MustCompile(`(?i)[\s]*<h([1-6]+)[^>]*>[\s]*(.*)[\s]*<\/h[1-6]+>`)
+	headerBlock           = regexp.MustCompile(`(?imsU)[\s]*<h([1-6]+)[^>]*>[\s]*(.*)[\s]*<\/h[1-6]+>`)
 	headerBlockBr         = regexp.MustCompile(`(?i)<br[\s]*\/?>`)
 	headerBlockTags       = regexp.MustCompile(`(?i)<\/?[^>]*>`)
 	wrapSpans             = regexp.MustCompile(`(?msi)(<\/span>)[\s]+(<span)`)
@@ -41,6 +41,7 @@ const (
 )
 
 // XXX: based on premailer/premailer@7c94e7a5a457b6710bada8186c6a41fccbfa08d1
+// https://github.com/premailer/premailer/tree/7c94e7a5a457b6710bada8186c6a41fccbfa08d1
 
 func submatchReplace(text string, regex *regexp.Regexp, replace func(string, []int) string) string {
 	var start int
@@ -172,15 +173,18 @@ func Convert(document string, lineLength int) (string, error) {
 		headerText = headerBlockBr.ReplaceAllString(headerText, "\n")
 		headerText = headerBlockTags.ReplaceAllString(headerText, "")
 
-		// XXX: added this, seems to be necessary
-		headerText = strings.TrimSpace(headerText)
-
 		var maxLength int
+		var headerLines []string
 		for _, line := range strings.Split(headerText, "\n") {
-			if l := len(line); l > maxLength {
-				maxLength = l
+			if trimmed := strings.TrimSpace(line); len(trimmed) > 0 {
+				headerLines = append(headerLines, trimmed)
+				if l := len(headerLines[len(headerLines)-1]); l > maxLength {
+					maxLength = l
+				}
 			}
 		}
+
+		headerText = strings.Join(headerLines, "\n")
 
 		var header string
 
@@ -234,7 +238,7 @@ func Convert(document string, lineLength int) (string, error) {
 	// no more than two consecutive newlines
 	txt = consecutiveNewlines.ReplaceAllString(txt, "\n\n")
 
-	//  the word messes up the parens
+	//  wordWrap messes up the parens
 	txt = submatchReplace(txt, fixWordWrappedParens, func(t string, submatch []int) string {
 		leadingSpace, content, trailingSpace := t[submatch[2]:submatch[3]], t[submatch[4]:submatch[5]], t[submatch[6]:submatch[7]]
 		var out string
