@@ -2,6 +2,7 @@ package textplain
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -11,16 +12,109 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+// Defaults
+const (
+	DefaultLineLength = 65
+)
+
+// Well-defined errors
 var (
-	ignoredHTML           = regexp.MustCompile(`(?ms)<!-- start text\/html -->.*?<!-- end text\/html -->`)
-	imgAltDoubleQuotes    = regexp.MustCompile(`(?i)<img.+?alt=\"([^\"]*)\"[^>]*\>`)
-	imgAltSingleQuotes    = regexp.MustCompile(`(?i)<img.+?alt=\'([^\']*)\'[^>]*\>`)
-	links                 = regexp.MustCompile(`(?i)<a\s.*?href=["'](mailto:)?([^"']*)["'][^>]*>((.|\s)*?)<\/a>`)
-	headerClose           = regexp.MustCompile(`(?i)(<\/h[1-6]>)`)
-	headerBlock           = regexp.MustCompile(`(?imsU)[\s]*<h([1-6]+)[^>]*>[\s]*(.*)[\s]*<\/h[1-6]+>`)
-	headerBlockBr         = regexp.MustCompile(`(?i)<br[\s]*\/?>`)
-	headerBlockTags       = regexp.MustCompile(`(?i)<\/?[^>]*>`)
-	wrapSpans             = regexp.MustCompile(`(?msi)(<\/span>)[\s]+(<span)`)
+	ErrBodyNotFound = errors.New("Could not find a `body` element in your html document")
+)
+
+var (
+	ignoredHTML = regexp.MustCompile(`(?ms)<!-- start text\/html -->.*?<!-- end text\/html -->`)
+
+	// imgAltDoubleQuotes replaces images with their alt tag when it is double quoted
+	imgAltDoubleQuotes = submatchReplacer{
+		regexp: regexp.MustCompile(`(?i)<img.+?alt=\"([^\"]*)\"[^>]*\>`),
+		handler: func(t string, submatch []int) string {
+			return t[submatch[2]:submatch[3]]
+		},
+	}
+
+	// imgAltSingleQuotes replaces images with their alt tag when it is single quoted
+	imgAltSingleQuotes = submatchReplacer{
+		regexp: regexp.MustCompile(`(?i)<img.+?alt=\'([^\']*)\'[^>]*\>`),
+		handler: func(t string, submatch []int) string {
+			return t[submatch[2]:submatch[3]]
+		},
+	}
+
+	// links replaces anchor links with one of "href" or "content ( href )"
+	links = submatchReplacer{
+		regexp: regexp.MustCompile(`(?i)<a\s.*?href=["'](mailto:)?([^"']*)["'][^>]*>((.|\s)*?)<\/a>`),
+		handler: func(t string, submatch []int) string {
+			href, value := strings.TrimSpace(t[submatch[4]:submatch[5]]), strings.TrimSpace(t[submatch[6]:submatch[7]])
+			var replace string
+			if strings.ToLower(href) == strings.ToLower(value) {
+				replace = value
+			} else if value != "" {
+				replace = fmt.Sprintf("%s ( %s )", value, href)
+			}
+			return replace
+		},
+	}
+
+	// headerClose moves `</h[1-6]>` tags to their own line as a preprocessing step for headerBlock
+	headerClose = submatchReplacer{
+		regexp: regexp.MustCompile(`(?i)(<\/h[1-6]>)`),
+		handler: func(t string, submatch []int) string {
+			return "\n" + t[submatch[2]:submatch[3]]
+		},
+	}
+
+	// used in headerBlock to do some content replacement
+	headerBlockBr   = regexp.MustCompile(`(?i)<br[\s]*\/?>`)
+	headerBlockTags = regexp.MustCompile(`(?i)<\/?[^>]*>`)
+
+	// headerBlock converts a `<h[1-6]>` block to plaintext
+	headerBlock = submatchReplacer{
+		regexp: regexp.MustCompile(`(?imsU)[\s]*<h([1-6]+)[^>]*>[\s]*(.*)[\s]*<\/h[1-6]+>`),
+		handler: func(t string, submatch []int) string {
+			headerLevel, _ := strconv.Atoi(t[submatch[2]:submatch[3]])
+			headerText := t[submatch[4]:submatch[5]]
+
+			headerText = headerBlockBr.ReplaceAllString(headerText, "\n")
+			headerText = headerBlockTags.ReplaceAllString(headerText, "")
+
+			var maxLength int
+			var headerLines []string
+			for _, line := range strings.Split(headerText, "\n") {
+				if trimmed := strings.TrimSpace(line); len(trimmed) > 0 {
+					headerLines = append(headerLines, trimmed)
+					if l := len(headerLines[len(headerLines)-1]); l > maxLength {
+						maxLength = l
+					}
+				}
+			}
+
+			headerText = strings.Join(headerLines, "\n")
+			var header string
+
+			// special case headers
+			switch headerLevel {
+			case 1:
+				header = strings.Repeat("*", maxLength) + "\n" + headerText + "\n" + strings.Repeat("*", maxLength)
+			case 2:
+				header = strings.Repeat("-", maxLength) + "\n" + headerText + "\n" + strings.Repeat("-", maxLength)
+			default:
+				header = headerText + "\n" + strings.Repeat("-", maxLength)
+			}
+
+			return "\n\n" + header + "\n\n"
+		},
+	}
+
+	// wrapSpans merges together contiguous span tags into a single line
+	wrapSpans = submatchReplacer{
+		regexp: regexp.MustCompile(`(?msi)(<\/span>)[\s]+(<span)`),
+		handler: func(t string, submatch []int) string {
+			return fmt.Sprintf("%s %s", t[submatch[2]:submatch[3]], t[submatch[4]:submatch[5]])
+		},
+	}
+
+	// these are all used as direct replacements
 	lists                 = regexp.MustCompile(`(?i)[\s]*(<li[^>]*>)[\s]*`)
 	listsNoNewline        = regexp.MustCompile(`(?i)<\/li>[\s]*([\n]?)`)
 	paragraphs            = regexp.MustCompile(`(?i)<\/p>`)
@@ -32,56 +126,42 @@ var (
 	extraSpaceStartOfLine = regexp.MustCompile(`\n[ \t]+`)
 	extraSpaceEndOfLine   = regexp.MustCompile(`[ \t]+\n`)
 	consecutiveNewlines   = regexp.MustCompile(`[\n]{3,}`)
-	fixWordWrappedParens  = regexp.MustCompile(`\(([ \n])(http[^)]+)([\n ])\)`)
-)
 
-// Defaults
-const (
-	DefaultLineLength = 65
+	// fixWordWrappedParens searches for links that got broken by word wrap and moves them
+	// into a single line
+	fixWordWrappedParens = submatchReplacer{
+		regexp: regexp.MustCompile(`\(([ \n])(http[^)]+)([\n ])\)`),
+		handler: func(t string, submatch []int) string {
+			leadingSpace, content, trailingSpace := t[submatch[2]:submatch[3]], t[submatch[4]:submatch[5]], t[submatch[6]:submatch[7]]
+			var out string
+			if leadingSpace == "\n" {
+				out += leadingSpace
+			}
+			out += "( " + content + " )"
+			if trailingSpace == "\n" {
+				out += leadingSpace
+			}
+			return out
+		},
+	}
 )
 
 // XXX: based on premailer/premailer@7c94e7a5a457b6710bada8186c6a41fccbfa08d1
 // https://github.com/premailer/premailer/tree/7c94e7a5a457b6710bada8186c6a41fccbfa08d1
 
-func submatchReplace(text string, regex *regexp.Regexp, replace func(string, []int) string) string {
+type submatchReplacer struct {
+	regexp  *regexp.Regexp
+	handler func(string, []int) string
+}
+
+func (s *submatchReplacer) Replace(text string) string {
 	var start int
 	var finalText string
-	for _, submatch := range regex.FindAllStringSubmatchIndex(text, -1) {
-		finalText += text[start:submatch[0]] + replace(text, submatch)
+	for _, submatch := range s.regexp.FindAllStringSubmatchIndex(text, -1) {
+		finalText += text[start:submatch[0]] + s.handler(text, submatch)
 		start = submatch[1]
 	}
 	return finalText + text[start:len(text)]
-}
-
-func eachElement(root *html.Node, callback func(n *html.Node) bool) {
-	var iter func(*html.Node)
-	iter = func(n *html.Node) {
-		if n == nil {
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if !callback(c) {
-				return
-			}
-			iter(c)
-		}
-	}
-	iter(root)
-	callback(root)
-}
-
-// XXX: terrible but functional
-func findElement(root *html.Node, element string) *html.Node {
-	var found *html.Node
-	eachElement(root, func(n *html.Node) bool {
-		if n.Type == html.ElementNode && n.Data == element {
-			found = n
-			return false
-		}
-		return true
-	})
-
-	return found
 }
 
 // Convert returns the text in UTF-8 format with all HTML tags removed
@@ -93,14 +173,37 @@ func Convert(document string, lineLength int) (string, error) {
 		return "", err
 	}
 
-	element := findElement(doc, "body")
+	// Find the <body> tag within the document
+	var bodyElement *html.Node
+	if doc.Type == html.ElementNode && doc.Data == "body" {
+		bodyElement = doc
+	} else {
+		var scanForBody func(n *html.Node, depth int)
+		scanForBody = func(n *html.Node, depth int) {
+			if n == nil {
+				return
+			}
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if n.Type == html.ElementNode && n.Data == "body" {
+					bodyElement = n
+					return
+				}
+				if depth < 5 {
+					scanForBody(c, depth+1)
+				}
+			}
+		}
+		scanForBody(doc, 0)
+	}
+	if bodyElement == nil {
+		return "", ErrBodyNotFound
+	}
 
 	var dropNonContentTags func(*html.Node)
 	dropNonContentTags = func(n *html.Node) {
 		if n == nil {
 			return
 		}
-
 		var toRemove []*html.Node
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			if c.DataAtom == atom.Script || c.DataAtom == atom.Style {
@@ -109,17 +212,16 @@ func Convert(document string, lineLength int) (string, error) {
 				dropNonContentTags(c)
 			}
 		}
-
 		for _, r := range toRemove {
 			n.RemoveChild(r)
 		}
 	}
-	dropNonContentTags(element)
+	dropNonContentTags(bodyElement)
 
 	// Reconstitute the cleaned HTML document for application
 	// of plaintext-conversion logic
 	var clean bytes.Buffer
-	err = html.Render(&clean, element)
+	err = html.Render(&clean, bodyElement)
 	if err != nil {
 		return "", err
 	}
@@ -129,82 +231,27 @@ func Convert(document string, lineLength int) (string, error) {
 	//  text version
 	txt := ignoredHTML.ReplaceAllString(string(clean.Bytes()), "")
 
-	//  replace images with their alt attributes
-	//  for img tags with "" for attribute quotes
-	//  with or without closing tag
+	//  replace images with their alt attributes for img tags with "" for attribute quotes
 	//  eg. the following formats:
 	//  <img alt="" />
 	//  <img alt="">
-	txt = submatchReplace(txt, imgAltDoubleQuotes, func(t string, submatch []int) string {
-		return t[submatch[2]:submatch[3]]
-	})
+	txt = imgAltDoubleQuotes.Replace(txt)
 
-	//  for img tags with '' for attribute quotes
-	//  with or without closing tag
+	//  replace images with their alt attributes for img tags with '' for attribute quotes
 	//  eg. the following formats:
 	//  <img alt='' />
 	//  <img alt=''>
-	txt = submatchReplace(txt, imgAltSingleQuotes, func(t string, submatch []int) string {
-		return t[submatch[2]:submatch[3]]
-	})
+	txt = imgAltSingleQuotes.Replace(txt)
 
 	// links
-	txt = submatchReplace(txt, links, func(t string, submatch []int) string {
-		href, value := strings.TrimSpace(txt[submatch[4]:submatch[5]]), strings.TrimSpace(txt[submatch[6]:submatch[7]])
-		var replace string
-		if strings.ToLower(href) == strings.ToLower(value) {
-			replace = value
-		} else if value != "" {
-			replace = fmt.Sprintf("%s ( %s )", value, href)
-		}
-		return replace
-	})
+	txt = links.Replace(txt)
 
 	//  handle headings (H1-H6)
-	txt = submatchReplace(txt, headerClose, func(t string, submatch []int) string {
-		// move closing tags to new lines
-		return "\n" + t[submatch[2]:submatch[3]]
-	})
-
-	txt = submatchReplace(txt, headerBlock, func(t string, submatch []int) string {
-		headerLevel, _ := strconv.Atoi(t[submatch[2]:submatch[3]])
-		headerText := t[submatch[4]:submatch[5]]
-
-		headerText = headerBlockBr.ReplaceAllString(headerText, "\n")
-		headerText = headerBlockTags.ReplaceAllString(headerText, "")
-
-		var maxLength int
-		var headerLines []string
-		for _, line := range strings.Split(headerText, "\n") {
-			if trimmed := strings.TrimSpace(line); len(trimmed) > 0 {
-				headerLines = append(headerLines, trimmed)
-				if l := len(headerLines[len(headerLines)-1]); l > maxLength {
-					maxLength = l
-				}
-			}
-		}
-
-		headerText = strings.Join(headerLines, "\n")
-
-		var header string
-
-		// special case headers
-		switch headerLevel {
-		case 1:
-			header = strings.Repeat("*", maxLength) + "\n" + headerText + "\n" + strings.Repeat("*", maxLength)
-		case 2:
-			header = strings.Repeat("-", maxLength) + "\n" + headerText + "\n" + strings.Repeat("-", maxLength)
-		default:
-			header = headerText + "\n" + strings.Repeat("-", maxLength)
-		}
-
-		return "\n\n" + header + "\n\n"
-	})
+	txt = headerClose.Replace(txt)
+	txt = headerBlock.Replace(txt)
 
 	//  wrap spans
-	txt = submatchReplace(txt, wrapSpans, func(t string, submatch []int) string {
-		return fmt.Sprintf("%s %s", t[submatch[2]:submatch[3]], t[submatch[4]:submatch[5]])
-	})
+	txt = wrapSpans.Replace(txt)
 
 	//  lists -- TODO: should handle ordered lists
 	txt = lists.ReplaceAllString(txt, "* ")
@@ -225,7 +272,28 @@ func Convert(document string, lineLength int) (string, error) {
 	//  no more than two consecutive spaces
 	txt = shortenSpaces.ReplaceAllString(txt, " ")
 
-	txt = wordWrap(txt, lineLength)
+	// Apply word wrapping to each line in the document by searching for logical breakpoints in each
+	// line (whitespace)
+	// Note: this diverges from the more cryptic regex approach in premailer
+	// https://github.com/premailer/premailer/blob/7c94e7a/lib/premailer/html_to_plain_text.rb#L116
+	var final []string
+	for _, line := range strings.Split(txt, "\n") {
+		var startIndex, endIndex int
+		for (len(line) - endIndex) > lineLength {
+			endIndex += lineLength
+			if endIndex >= len(line) {
+				endIndex = len(line) - 1
+			}
+			newIndex := strings.LastIndex(line[startIndex:endIndex+1], " ")
+			if newIndex < 0 {
+				continue
+			}
+			final = append(final, line[startIndex:startIndex+newIndex])
+			startIndex += newIndex
+		}
+		final = append(final, line[startIndex:])
+	}
+	txt = strings.Join(final, "\n")
 
 	//  remove linefeeds (\r\n and \r -> \n)
 	txt = lineFeeds.ReplaceAllString(txt, "\n")
@@ -239,33 +307,7 @@ func Convert(document string, lineLength int) (string, error) {
 	txt = consecutiveNewlines.ReplaceAllString(txt, "\n\n")
 
 	//  wordWrap messes up the parens
-	txt = submatchReplace(txt, fixWordWrappedParens, func(t string, submatch []int) string {
-		leadingSpace, content, trailingSpace := t[submatch[2]:submatch[3]], t[submatch[4]:submatch[5]], t[submatch[6]:submatch[7]]
-		var out string
-		if leadingSpace == "\n" {
-			out += leadingSpace
-		}
-		out += "( " + content + " )"
-		if trailingSpace == "\n" {
-			out += leadingSpace
-		}
-		return out
-	})
+	txt = fixWordWrappedParens.Replace(txt)
 
 	return strings.TrimSpace(txt), nil
-}
-
-func wordWrap(text string, lineLength int) string {
-	var final []string
-	for _, line := range strings.Split(text, "\n") {
-		if len(line) > lineLength {
-			// XXX: cacheme
-			lineBreakRegex := regexp.MustCompile(fmt.Sprintf(`(?ms)(.{1,%v})(\s+|$)`, lineLength))
-			line = submatchReplace(line, lineBreakRegex, func(t string, submatch []int) string {
-				return t[submatch[2]:submatch[3]] + "\n"
-			})
-		}
-		final = append(final, line)
-	}
-	return strings.Join(final, "\n")
 }

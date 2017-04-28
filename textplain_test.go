@@ -112,6 +112,14 @@ func TestWrappingLinesWithSpaces(t *testing.T) {
 	}
 }
 
+func TestWrappingDoesntBreakWords(t *testing.T) {
+	raw := "containsenoughcharacterstooverflowbutwontbewrapped"
+	expect := "containsenoughcharacterstooverflowbutwontbewrapped"
+	if plain, err := textplain.Convert(raw, 10); err != nil || strings.TrimSpace(plain) != expect {
+		t.Errorf("Wrong plaintext content, want: %v got: %v (%v)", expect, plain, err)
+	}
+}
+
 func TestImgAltTags(t *testing.T) {
 
 	//  ensure html imag tags that aren't self-closed are parsed,
