@@ -231,3 +231,23 @@ func TestMultilineTitles(t *testing.T) {
 
 	checkConvertToText(t, "*******\nHorse\nFriends\nYeah\n*******", html)
 }
+
+func TestWrappingDoesntAddUnnecessaryLineBreaks(t *testing.T) {
+	raw := `.stylesheet {
+	color: white;
+	background-image: url('data:image/png;base64,123456789012345678901234567890');
+	font-weight: bold;
+	margin: 0px;
+}`
+	expect := `.stylesheet {
+	color: white;
+	background-image:
+ url('data:image/png;base64,123456789012345678901234567890');
+	font-weight: bold;
+	margin: 0px;
+}`
+
+	if wrapped := textplain.WordWrap(raw, 25); wrapped != expect {
+		t.Errorf("Wrong plaintext content, want: \"%v\" got: \"%v\"", expect, wrapped)
+	}
+}

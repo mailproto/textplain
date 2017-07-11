@@ -272,28 +272,8 @@ func Convert(document string, lineLength int) (string, error) {
 	//  no more than two consecutive spaces
 	txt = shortenSpaces.ReplaceAllString(txt, " ")
 
-	// Apply word wrapping to each line in the document by searching for logical breakpoints in each
-	// line (whitespace)
-	// Note: this diverges from the more cryptic regex approach in premailer
-	// https://github.com/premailer/premailer/blob/7c94e7a/lib/premailer/html_to_plain_text.rb#L116
-	var final []string
-	for _, line := range strings.Split(txt, "\n") {
-		var startIndex, endIndex int
-		for (len(line) - endIndex) > lineLength {
-			endIndex += lineLength
-			if endIndex >= len(line) {
-				endIndex = len(line) - 1
-			}
-			newIndex := strings.LastIndex(line[startIndex:endIndex+1], " ")
-			if newIndex < 0 {
-				continue
-			}
-			final = append(final, line[startIndex:startIndex+newIndex])
-			startIndex += newIndex
-		}
-		final = append(final, line[startIndex:])
-	}
-	txt = strings.Join(final, "\n")
+	//  apply word wrapping
+	txt = WordWrap(txt, lineLength)
 
 	//  remove linefeeds (\r\n and \r -> \n)
 	txt = lineFeeds.ReplaceAllString(txt, "\n")
@@ -310,4 +290,32 @@ func Convert(document string, lineLength int) (string, error) {
 	txt = fixWordWrappedParens.Replace(txt)
 
 	return strings.TrimSpace(txt), nil
+}
+
+// WordWrap searches for logical breakpoints in each line (whitespace) and tries to trim each
+// line to the specified length
+// Note: this diverges from the regex approach in premailer, which I found to be significantly
+// slower in cases with long unbroken lines
+// https://github.com/premailer/premailer/blob/7c94e7a/lib/premailer/html_to_plain_text.rb#L116
+func WordWrap(txt string, lineLength int) string {
+	var final []string
+	for _, line := range strings.Split(txt, "\n") {
+		var startIndex, endIndex int
+		for (len(line) - endIndex) > lineLength {
+			endIndex += lineLength
+			if endIndex >= len(line) {
+				endIndex = len(line) - 1
+			}
+			newIndex := strings.LastIndex(line[startIndex:endIndex+1], " ")
+			if newIndex <= 0 {
+				continue
+			}
+
+			final = append(final, line[startIndex:startIndex+newIndex])
+			startIndex += newIndex
+		}
+		final = append(final, line[startIndex:])
+	}
+
+	return strings.Join(final, "\n")
 }

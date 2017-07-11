@@ -16,7 +16,6 @@ func checkConvertToText(t *testing.T, expect, html string) {
 	}
 }
 
-// XXX: these are copied from the main pkg
 func eachElement(root *html.Node, callback func(n *html.Node) bool) {
 	var iter func(*html.Node)
 	iter = func(n *html.Node) {
