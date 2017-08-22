@@ -25,6 +25,8 @@ var (
 var (
 	ignoredHTML = regexp.MustCompile(`(?ms)<!-- start text\/html -->.*?<!-- end text\/html -->`)
 
+	comments = regexp.MustCompile(`(?ms)<!--.*?-->`)
+
 	// imgAltDoubleQuotes replaces images with their alt tag when it is double quoted
 	imgAltDoubleQuotes = submatchReplacer{
 		regexp: regexp.MustCompile(`(?i)<img.+?alt=\"([^\"]*)\"[^>]*\>`),
@@ -230,6 +232,9 @@ func Convert(document string, lineLength int) (string, error) {
 	//  headers and footers that aren't needed in the
 	//  text version
 	txt := ignoredHTML.ReplaceAllString(string(clean.Bytes()), "")
+
+	//  strip out html comments
+	txt = comments.ReplaceAllString(txt, "")
 
 	//  replace images with their alt attributes for img tags with "" for attribute quotes
 	//  eg. the following formats:

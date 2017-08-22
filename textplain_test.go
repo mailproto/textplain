@@ -251,3 +251,49 @@ func TestWrappingDoesntAddUnnecessaryLineBreaks(t *testing.T) {
 		t.Errorf("Wrong plaintext content, want: \"%v\" got: \"%v\"", expect, wrapped)
 	}
 }
+
+func TestStrippingComments(t *testing.T) {
+	type testCase struct {
+		name   string
+		input  string
+		output string
+	}
+
+	for _, tc := range []testCase{
+		{"comment in tag", "<p>in<!--comment 1-->between</p>", "inbetween"},
+		{"comment between tags", `<p>before</p><!--comment 1--><p>after</p>`, "before\n\nafter"},
+		{"commented out tag", `<p>before</p><!--comment 1<div>random</div>--><p>after</p>`, "before\n\nafter"},
+		{"multiline comment", `<p>before</p>
+			<!--
+				replacing unordered list with an ordered one.
+				uncomment out incase it breaks stuff.
+
+				<h2>An Unordered HTML List</h2>
+				<ul>
+				  <li>Coffee</li>
+				  <li>Tea</li>
+				  <li>Milk</li>
+				</ul>
+			-->
+			<p>after</p>`, "before\n\nafter"},
+		{"comment within comment", `<p>before</p>
+			<!--
+				some reason to comment out the whole block
+
+				<h2>An Unordered HTML List</h2>
+				<ul>
+				  <li>Coffee</li>
+				  <li>Tea</li>
+				  <li>Milk</li>
+				</ul>
+
+				<!-- awesome -->
+				<p>sweet list</p>
+			-->
+			<p>after</p>`, "before\n\nsweet list\n\n-->\nafter"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checkConvertToText(t, tc.output, tc.input)
+		})
+	}
+}
