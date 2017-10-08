@@ -297,3 +297,15 @@ func TestStrippingComments(t *testing.T) {
 		})
 	}
 }
+
+func TestWrappingInvalidLength(t *testing.T) {
+	raw := `.stylesheet {
+		color: white;
+		background-image: url('data:image/png;base64,123456789012345678901234567890');
+		font-weight: bold;
+		margin: 0px;
+	}`
+	if wrapped := textplain.WordWrap(raw, -1); wrapped != raw {
+		t.Errorf("Wrong plaintext content, want: \"%v\" got: \"%v\"", raw, wrapped)
+	}
+}

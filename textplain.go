@@ -303,6 +303,12 @@ func Convert(document string, lineLength int) (string, error) {
 // slower in cases with long unbroken lines
 // https://github.com/premailer/premailer/blob/7c94e7a/lib/premailer/html_to_plain_text.rb#L116
 func WordWrap(txt string, lineLength int) string {
+
+	// A line length of zero or less indicates no wrapping
+	if lineLength <= 0 {
+		return txt
+	}
+
 	var final []string
 	for _, line := range strings.Split(txt, "\n") {
 		var startIndex, endIndex int
