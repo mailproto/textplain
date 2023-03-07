@@ -204,7 +204,7 @@ func (s *submatchReplacer) Replace(text string) string {
 // because this library relies heavily on regexp objects, it may act as a bottlneck to concurrency
 // due to thread-safety mutexes in *regexp.Regexp internals
 func Convert(document string, lineLength int) (string, error) {
-	return defaultConverter.Convert(document, lineLength)
+	return (&TreeConverter{}).Convert(document, lineLength)
 }
 
 func MustConvert(document string, lineLength int) string {
