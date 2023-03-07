@@ -70,7 +70,7 @@ childLoop:
 				parts = append(parts, li...)
 				continue childLoop
 			case atom.Ol:
-				li, err := t.listItems(c, unordered)
+				li, err := t.listItems(c, ordered)
 				if err != nil {
 					return nil, err
 				}
