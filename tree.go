@@ -30,10 +30,12 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 	var text string
 	for _, line := range lines {
 		// XXX: some other stuff here
-		text += WordWrap(line, lineLength)
+		text += line
 	}
 
-	return text, nil
+	text = strings.TrimSpace(text)
+
+	return WordWrap(text, lineLength), nil
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
@@ -55,27 +57,39 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 
 	var parts []string
 
-childLoop:
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		switch c.Type {
+		case html.CommentNode:
+			// XXX: support <!-- start text/html --> cleanup
+			continue
 		case html.TextNode:
-			parts = append(parts, strings.TrimSpace(c.Data))
+			parts = append(parts, c.Data)
 		case html.ElementNode:
 			switch c.DataAtom {
+			case atom.Script, atom.Style:
+				continue
+			case atom.P:
+				more, err := t.doConvert(c)
+				if err != nil {
+					return nil, err
+				}
+				parts = append(parts, more...)
+				parts = append(parts, "\n\n")
+				continue
 			case atom.Ul:
 				li, err := t.listItems(c, unordered)
 				if err != nil {
 					return nil, err
 				}
 				parts = append(parts, li...)
-				continue childLoop
+				continue
 			case atom.Ol:
 				li, err := t.listItems(c, ordered)
 				if err != nil {
 					return nil, err
 				}
 				parts = append(parts, li...)
-				continue childLoop
+				continue
 			case atom.Li:
 
 				parts = append(parts, unordered(0))
@@ -87,12 +101,31 @@ childLoop:
 
 				parts = append(parts, more...)
 				parts = append(parts, "\n")
-				continue childLoop
-				// case atom.Li:
-				// parts = append(parts,
-				// if getAttr(c, "href") != "" {
-				// 	parts = append(parts, )
-				// }
+				continue
+			case atom.Br:
+				parts = append(parts, "\n")
+				continue
+			case atom.H1:
+				more, err := t.headerBlock(c, "*", true)
+				if err != nil {
+					return nil, err
+				}
+				parts = append(parts, more...)
+				continue
+			case atom.H2:
+				more, err := t.headerBlock(c, "-", true)
+				if err != nil {
+					return nil, err
+				}
+				parts = append(parts, more...)
+				continue
+			case atom.H3, atom.H4, atom.H5, atom.H6:
+				more, err := t.headerBlock(c, "-", false)
+				if err != nil {
+					return nil, err
+				}
+				parts = append(parts, more...)
+				continue
 			}
 		}
 		more, err := t.doConvert(c)
@@ -103,6 +136,28 @@ childLoop:
 	}
 
 	return parts, nil
+}
+
+func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool) ([]string, error) {
+	content, err := t.doConvert(n)
+	if err != nil {
+		return nil, err
+	}
+	headerText := strings.TrimSpace(strings.Join(content, ""))
+	var maxSize int
+	for _, line := range strings.Split(headerText, "\n") {
+		if l := len(line); l > maxSize {
+			maxSize = l
+		}
+	}
+	delimiter := strings.Repeat(blockChar, maxSize)
+
+	block := []string{"\n\n"}
+	if prefix {
+		block = append(block, delimiter, "\n")
+	}
+
+	return append(block, headerText, "\n", delimiter, "\n\n"), nil
 }
 
 func unordered(idx int) string { return "* " }

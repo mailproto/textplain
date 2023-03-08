@@ -181,32 +181,32 @@ func TestParagraphsAndBreaks(t *testing.T) {
 func TestHeadings(t *testing.T) {
 	runTestCases(t, []testCase{
 		{
-			name:   "",
+			name:   "h1",
 			body:   "<h1>Test</h1>",
 			expect: "****\nTest\n****",
 		},
 		{
-			name:   "",
+			name:   "h1 with whitespace",
 			body:   "\t<h1>\nTest</h1>",
 			expect: "****\nTest\n****",
 		},
 		{
-			name:   "",
+			name:   "multiline h1",
 			body:   "\t<h1>\nTest line 1<br>Test 2</h1> ",
 			expect: "***********\nTest line 1\nTest 2\n***********",
 		},
 		{
-			name:   "",
+			name:   "multiple h1 tags",
 			body:   "<h1>Test</h1> <h1>Test</h1>",
 			expect: "****\nTest\n****\n\n****\nTest\n****",
 		},
 		{
-			name:   "",
+			name:   "h2",
 			body:   "<h2>Test</h2>",
 			expect: "----\nTest\n----",
 		},
 		{
-			name:   "",
+			name:   "h3",
 			body:   "<h3> <span class='a'>Test </span></h3>",
 			expect: "Test\n----",
 		},
