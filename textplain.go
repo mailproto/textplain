@@ -207,6 +207,11 @@ func Convert(document string, lineLength int) (string, error) {
 	return defaultConverter.Convert(document, lineLength)
 }
 
+func MustConvert(document string, lineLength int) string {
+	result, _ := Convert(document, lineLength)
+	return result
+}
+
 // Convert returns a text-only version of supplied document in UTF-8 format with all HTML tags removed
 func (t *Converter) Convert(document string, lineLength int) (string, error) {
 	// Brutish way to get a fully formed html document
@@ -335,38 +340,4 @@ func (t *Converter) Convert(document string, lineLength int) (string, error) {
 	txt = t.fixWordWrappedParens.Replace(txt)
 
 	return strings.TrimSpace(txt), nil
-}
-
-// WordWrap searches for logical breakpoints in each line (whitespace) and tries to trim each
-// line to the specified length
-// Note: this diverges from the regex approach in premailer, which I found to be significantly
-// slower in cases with long unbroken lines
-// https://github.com/premailer/premailer/blob/7c94e7a/lib/premailer/html_to_plain_text.rb#L116
-func WordWrap(txt string, lineLength int) string {
-
-	// A line length of zero or less indicates no wrapping
-	if lineLength <= 0 {
-		return txt
-	}
-
-	var final []string
-	for _, line := range strings.Split(txt, "\n") {
-		var startIndex, endIndex int
-		for (len(line) - endIndex) > lineLength {
-			endIndex += lineLength
-			if endIndex >= len(line) {
-				endIndex = len(line) - 1
-			}
-			newIndex := strings.LastIndex(line[startIndex:endIndex+1], " ")
-			if newIndex <= 0 {
-				continue
-			}
-
-			final = append(final, line[startIndex:startIndex+newIndex])
-			startIndex += newIndex
-		}
-		final = append(final, line[startIndex:])
-	}
-
-	return strings.Join(final, "\n")
 }
