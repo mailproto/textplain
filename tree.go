@@ -56,6 +56,10 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 			if text[i] == ' ' {
 				continue
 			}
+			if text[i] == '\t' || text[i] == '\n' {
+				processed[idx] = '\n'
+				continue
+			}
 		}
 
 		processed = append(processed, text[i])
@@ -87,7 +91,14 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		switch c.Type {
 		case html.CommentNode:
-			// XXX: support <!-- start text/html --> cleanup
+			if strings.TrimSpace(c.Data) == "start text/html" {
+				for s := c.NextSibling; s != nil; s = s.NextSibling {
+					if s.Type == html.CommentNode && strings.TrimSpace(s.Data) == "end text/html" {
+						c = s
+						break
+					}
+				}
+			}
 			continue
 		case html.TextNode:
 			parts = append(parts, c.Data)
@@ -152,6 +163,11 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				}
 				parts = append(parts, more...)
 				continue
+			case atom.Img, atom.Image:
+				if alt := getAttr(c, "alt"); alt != "" {
+					parts = append(parts, strings.TrimSpace(alt))
+				}
+				continue
 			case atom.A:
 				more, err := t.doConvert(c)
 				if err != nil {
@@ -170,9 +186,7 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 					}
 				}
 
-				if strings.HasPrefix(href, "mailto:") {
-					href = href[7:]
-				}
+				href = strings.TrimPrefix(href, "mailto:")
 
 				if text == href {
 					parts = append(parts, href)
@@ -204,7 +218,7 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 	headerText := strings.TrimSpace(strings.Join(content, ""))
 	var maxSize int
 	for _, line := range strings.Split(headerText, "\n") {
-		if l := len(line); l > maxSize {
+		if l := len(strings.TrimSpace(line)); l > maxSize {
 			maxSize = l
 		}
 	}
