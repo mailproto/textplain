@@ -151,27 +151,27 @@ func TestStrippingHTML(t *testing.T) {
 func TestParagraphsAndBreaks(t *testing.T) {
 	runTestCases(t, []testCase{
 		{
-			name:   "",
+			name:   "paragraphs",
 			body:   "<p>Test text</p><p>Test text</p>",
 			expect: "Test text\n\nTest text",
 		},
 		{
-			name:   "",
+			name:   "paragraphs with whitespace",
 			body:   "\n<p>Test text</p>\n\n\n\t<p>Test text</p>\n",
 			expect: "Test text\n\nTest text",
 		},
 		{
-			name:   "",
+			name:   "paragraph with infix break",
 			body:   "\n<p>Test text<br/>Test text</p>\n",
 			expect: "Test text\nTest text",
 		},
 		{
-			name:   "",
+			name:   "paragraph with end break",
 			body:   "\n<p>Test text<br> \tTest text<br></p>\n",
 			expect: "Test text\nTest text",
 		},
 		{
-			name:   "",
+			name:   "full caps break",
 			body:   "Test text<br><BR />Test text",
 			expect: "Test text\n\nTest text",
 		},

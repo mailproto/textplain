@@ -33,9 +33,36 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 		text += line
 	}
 
-	text = strings.TrimSpace(text)
+	if len(text) < 2 {
+		return WordWrap(strings.TrimSpace(text), lineLength), nil
+	}
 
-	return WordWrap(text, lineLength), nil
+	processed := make([]byte, 0, len(text))
+	processed = append(processed, text[:2]...)
+	idx := 1
+
+	for i := 2; i < len(text); i++ {
+
+		switch processed[idx] {
+		case '\n':
+			if text[i] == '\t' || text[i] == ' ' {
+				continue
+			}
+
+			if processed[idx-1] == '\n' && text[i] == '\n' {
+				continue
+			}
+		case ' ':
+			if text[i] == ' ' {
+				continue
+			}
+		}
+
+		processed = append(processed, text[i])
+		idx++
+	}
+
+	return WordWrap(strings.TrimSpace(string(processed)), lineLength), nil
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
@@ -84,14 +111,13 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				parts = append(parts, li...)
 				continue
 			case atom.Ol:
-				li, err := t.listItems(c, ordered)
+				li, err := t.listItems(c, unordered) // XXX: change to ordered
 				if err != nil {
 					return nil, err
 				}
 				parts = append(parts, li...)
 				continue
 			case atom.Li:
-
 				parts = append(parts, unordered(0))
 
 				more, err := t.doConvert(c)
@@ -125,6 +151,38 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 					return nil, err
 				}
 				parts = append(parts, more...)
+				continue
+			case atom.A:
+				more, err := t.doConvert(c)
+				if err != nil {
+					return nil, err
+				}
+
+				href := getAttr(c, "href")
+				if href == "" {
+					parts = append(parts, more...)
+					continue
+				}
+				text := strings.TrimSpace(strings.Join(more, ""))
+				if text == "" {
+					if alt := getAttr(c, "alt"); alt != "" {
+						text = strings.TrimSpace(text)
+					}
+				}
+
+				if strings.HasPrefix(href, "mailto:") {
+					href = href[7:]
+				}
+
+				if text == href {
+					parts = append(parts, href)
+					continue
+				} else if text == "" {
+					continue
+				}
+
+				parts = append(parts, text, " ( ", strings.TrimSpace(href), " )")
+
 				continue
 			}
 		}
@@ -177,7 +235,7 @@ func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) ([]st
 		case atom.Li:
 			parts = append(parts, prefixer(idx))
 			idx++
-			parts = append(parts, contents...)
+			parts = append(parts, strings.TrimSpace(strings.Join(contents, "")))
 			parts = append(parts, "\n")
 		default:
 			parts = append(parts, contents...)
