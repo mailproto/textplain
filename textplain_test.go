@@ -79,13 +79,29 @@ func TestStrippingWhitespace(t *testing.T) {
 }
 
 func TestWrappingSpans(t *testing.T) {
-	runTestCase(t, testCase{
-		body: `<html>
+	runTestCases(t, []testCase{
+		{
+			body: `<html>
 	    <body>
 			<p><span>Test</span>
 			<span>line 2</span>
 			</p>`,
-		expect: `Test line 2`,
+			expect: `Test line 2`,
+		},
+		{
+			body: `<html>
+	    <body>
+			<p><span>Test</span>
+			<span> spans </span>
+			<p>inbetween</p>
+			<span>line 2</span>
+
+			<span>
+				again
+			</span>
+			</p>`,
+			expect: "Test spans\n\ninbetween\n\nline 2\nagain",
+		},
 	})
 }
 
