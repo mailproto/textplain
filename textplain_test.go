@@ -79,13 +79,29 @@ func TestStrippingWhitespace(t *testing.T) {
 }
 
 func TestWrappingSpans(t *testing.T) {
-	runTestCase(t, testCase{
-		body: `<html>
+	runTestCases(t, []testCase{
+		{
+			body: `<html>
 	    <body>
 			<p><span>Test</span>
 			<span>line 2</span>
 			</p>`,
-		expect: `Test line 2`,
+			expect: `Test line 2`,
+		},
+		{
+			body: `<html>
+	    <body>
+			<p><span>Test</span>
+			<span> spans </span>
+			<p>inbetween</p>
+			<span>line 2</span>
+
+			<span>
+				again
+			</span>
+			</p>`,
+			expect: "Test spans\n\ninbetween\n\nline 2\nagain",
+		},
 	})
 }
 
@@ -126,6 +142,11 @@ func TestLists(t *testing.T) {
 			body:   "<ol><li>item 1</li><li>item 2</li><li>item 3</li></ol>",
 			expect: "* item 1\n* item 2\n* item 3",
 		},
+		{
+			name:   "list items with <ul> and infix whitespace",
+			body:   "<ul><li>item 1</li>  \t\n\t <li>item 2</li><li>item 3</li></ul>",
+			expect: "* item 1\n* item 2\n* item 3",
+		},
 	})
 }
 
@@ -151,27 +172,27 @@ func TestStrippingHTML(t *testing.T) {
 func TestParagraphsAndBreaks(t *testing.T) {
 	runTestCases(t, []testCase{
 		{
-			name:   "",
+			name:   "paragraphs",
 			body:   "<p>Test text</p><p>Test text</p>",
 			expect: "Test text\n\nTest text",
 		},
 		{
-			name:   "",
+			name:   "paragraphs with whitespace",
 			body:   "\n<p>Test text</p>\n\n\n\t<p>Test text</p>\n",
 			expect: "Test text\n\nTest text",
 		},
 		{
-			name:   "",
+			name:   "paragraph with infix break",
 			body:   "\n<p>Test text<br/>Test text</p>\n",
 			expect: "Test text\nTest text",
 		},
 		{
-			name:   "",
+			name:   "paragraph with end break",
 			body:   "\n<p>Test text<br> \tTest text<br></p>\n",
 			expect: "Test text\nTest text",
 		},
 		{
-			name:   "",
+			name:   "full caps break",
 			body:   "Test text<br><BR />Test text",
 			expect: "Test text\n\nTest text",
 		},
@@ -181,32 +202,32 @@ func TestParagraphsAndBreaks(t *testing.T) {
 func TestHeadings(t *testing.T) {
 	runTestCases(t, []testCase{
 		{
-			name:   "",
+			name:   "h1",
 			body:   "<h1>Test</h1>",
 			expect: "****\nTest\n****",
 		},
 		{
-			name:   "",
+			name:   "h1 with whitespace",
 			body:   "\t<h1>\nTest</h1>",
 			expect: "****\nTest\n****",
 		},
 		{
-			name:   "",
+			name:   "multiline h1",
 			body:   "\t<h1>\nTest line 1<br>Test 2</h1> ",
 			expect: "***********\nTest line 1\nTest 2\n***********",
 		},
 		{
-			name:   "",
+			name:   "multiple h1 tags",
 			body:   "<h1>Test</h1> <h1>Test</h1>",
 			expect: "****\nTest\n****\n\n****\nTest\n****",
 		},
 		{
-			name:   "",
+			name:   "h2",
 			body:   "<h2>Test</h2>",
 			expect: "----\nTest\n----",
 		},
 		{
-			name:   "",
+			name:   "h3",
 			body:   "<h3> <span class='a'>Test </span></h3>",
 			expect: "Test\n----",
 		},

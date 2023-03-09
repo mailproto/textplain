@@ -29,6 +29,10 @@ func WordWrap(txt string, lineLength int) string {
 
 			final = append(final, line[startIndex:startIndex+newIndex])
 			startIndex += newIndex
+
+			// clear any extra space
+			for ; line[startIndex] == ' '; startIndex++ {
+			}
 		}
 		final = append(final, line[startIndex:])
 	}
