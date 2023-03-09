@@ -139,6 +139,19 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				parts = append(parts, more...)
 				parts = append(parts, "\n")
 				continue
+			case atom.Span:
+				var more []string
+				var err error
+				c, more, err = t.wrapSpans(c)
+				if err != nil {
+					return nil, err
+				}
+				parts = append(parts, more...)
+
+				if c == nil {
+					return parts, nil
+				}
+				continue
 			case atom.Br:
 				parts = append(parts, "\n")
 				continue
@@ -257,6 +270,40 @@ func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) ([]st
 	}
 
 	return parts, nil
+}
+
+func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
+
+	var parts []string
+
+	var c *html.Node
+	for c = n; c != nil; c = c.NextSibling {
+
+		if c.Type == html.ElementNode && c.DataAtom != atom.Span {
+			return c, parts, nil
+		}
+
+		var span string
+		switch c.Type {
+		case html.ElementNode:
+			children, err := t.doConvert(c)
+			if err != nil {
+				return c, nil, err
+			}
+
+			span = strings.Join(children, "")
+		case html.TextNode:
+			span = c.Data
+		}
+
+		if trimmed := strings.TrimRight(span, "\n\t "); len(trimmed) != len(span) {
+			span = trimmed + " "
+		}
+
+		parts = append(parts, span)
+	}
+
+	return c, parts, nil
 }
 
 func getAttr(n *html.Node, name string) string {
