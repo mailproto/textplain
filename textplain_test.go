@@ -142,6 +142,11 @@ func TestLists(t *testing.T) {
 			body:   "<ol><li>item 1</li><li>item 2</li><li>item 3</li></ol>",
 			expect: "* item 1\n* item 2\n* item 3",
 		},
+		{
+			name:   "list items with <ul> and infix whitespace",
+			body:   "<ul><li>item 1</li>  \t\n\t <li>item 2</li><li>item 3</li></ul>",
+			expect: "* item 1\n* item 2\n* item 3",
+		},
 	})
 }
 

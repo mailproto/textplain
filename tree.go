@@ -27,46 +27,9 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 		return "", err
 	}
 
-	var text string
-	for _, line := range lines {
-		// XXX: some other stuff here
-		text += line
-	}
+	text := t.fixSpacing(strings.Join(lines, ""))
 
-	if len(text) < 2 {
-		return WordWrap(strings.TrimSpace(text), lineLength), nil
-	}
-
-	processed := make([]byte, 0, len(text))
-	processed = append(processed, text[:2]...)
-	idx := 1
-
-	for i := 2; i < len(text); i++ {
-
-		switch processed[idx] {
-		case '\n':
-			if text[i] == '\t' || text[i] == ' ' {
-				continue
-			}
-
-			if processed[idx-1] == '\n' && text[i] == '\n' {
-				continue
-			}
-		case ' ':
-			if text[i] == ' ' {
-				continue
-			}
-			if text[i] == '\t' || text[i] == '\n' {
-				processed[idx] = '\n'
-				continue
-			}
-		}
-
-		processed = append(processed, text[i])
-		idx++
-	}
-
-	return WordWrap(strings.TrimSpace(string(processed)), lineLength), nil
+	return WordWrap(strings.TrimSpace(text), lineLength), nil
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
@@ -129,15 +92,11 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				parts = append(parts, li...)
 				continue
 			case atom.Li:
-				parts = append(parts, unordered(0))
-
-				more, err := t.doConvert(c)
+				item, err := t.listItem(c, "* ")
 				if err != nil {
 					return nil, err
 				}
-
-				parts = append(parts, more...)
-				parts = append(parts, "\n")
+				parts = append(parts, item)
 				continue
 			case atom.Span:
 				var more []string
@@ -253,23 +212,35 @@ func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) ([]st
 	var idx = 1
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 
-		contents, err := t.doConvert(c)
-		if err != nil {
-			return nil, err
-		}
-
 		switch c.DataAtom {
 		case atom.Li:
-			parts = append(parts, prefixer(idx))
+			prefix := prefixer(idx)
 			idx++
-			parts = append(parts, strings.TrimSpace(strings.Join(contents, "")))
-			parts = append(parts, "\n")
+
+			item, err := t.listItem(c, prefix)
+			if err != nil {
+				return nil, err
+			}
+			parts = append(parts, item)
 		default:
+			contents, err := t.doConvert(c)
+			if err != nil {
+				return nil, err
+			}
 			parts = append(parts, contents...)
 		}
 	}
 
 	return parts, nil
+}
+
+func (t *TreeConverter) listItem(n *html.Node, prefix string) (string, error) {
+	contents, err := t.doConvert(n)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(prefix+strings.Join(contents, "")) + "\n", nil
 }
 
 func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
@@ -304,6 +275,51 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
 	}
 
 	return c, parts, nil
+}
+
+func (t *TreeConverter) fixSpacing(text string) string {
+
+	if len(text) < 2 {
+		return text
+	}
+
+	processed := make([]byte, 0, len(text))
+	processed = append(processed, text[:2]...)
+	idx := 1
+
+	for i := 2; i < len(text); i++ {
+
+		switch processed[idx] {
+		case '\n':
+			if text[i] == '\t' || text[i] == ' ' {
+				continue
+			}
+
+			if processed[idx-1] == '\n' && text[i] == '\n' {
+				continue
+			}
+
+			// shim to clear whitespace between li tags
+			if processed[idx-1] == '\n' && len(text) > i && (text[i] == '*' && text[i+1] == ' ') {
+				processed[idx] = '*'
+				continue
+			}
+
+		case ' ':
+			if text[i] == ' ' {
+				continue
+			}
+			if text[i] == '\t' || text[i] == '\n' {
+				processed[idx] = '\n'
+				continue
+			}
+		}
+
+		processed = append(processed, text[i])
+		idx++
+	}
+
+	return string(processed)
 }
 
 func getAttr(n *html.Node, name string) string {
