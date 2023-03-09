@@ -10,6 +10,10 @@ import (
 
 type TreeConverter struct{}
 
+func NewTreeConverter() Converter {
+	return &TreeConverter{}
+}
+
 func (t *TreeConverter) Convert(document string, lineLength int) (string, error) {
 
 	root, err := html.Parse(strings.NewReader(document))
