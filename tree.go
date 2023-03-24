@@ -293,6 +293,7 @@ func (t *TreeConverter) fixSpacing(text string) string {
 
 	var inList = (processed[0] == '*' && processed[1] == ' ')
 
+tidyLoop:
 	for i := 2; i < len(text); i++ {
 
 		switch processed[idx] {
@@ -307,7 +308,15 @@ func (t *TreeConverter) fixSpacing(text string) string {
 			}
 
 			if inList && text[i] == '\n' {
-				continue
+				// lookahead through any whitespace to make sure we are still in a list
+				for j := i; j < len(text); j++ {
+					if text[j] == '\t' || text[j] == ' ' || text[j] == '\n' {
+						continue
+					}
+					if text[j] == '*' && j+1 < len(text) && text[j+1] == ' ' {
+						continue tidyLoop
+					}
+				}
 			}
 
 			if text[i] == '*' && text[i+1] == ' ' {
