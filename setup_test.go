@@ -45,8 +45,8 @@ const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "htt
 
 <p style="font-weight: bold; color: red;" class="button">Hello></p>
 <p>
-	<a href="http://example.com"><img alt="An Example" src="https://example.com/image.jpg" /></a><br/>
-	<a href="https://example.com/fancy" class="fancy">Fancy text</a>
+<a href="http://example.com"><img alt="An Example" src="https://example.com/image.jpg/></a><br/>
+<a href="https://example.com/fancy" class="fancy">Fancy text</a>
 </p>
 <ol>
 
