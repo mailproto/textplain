@@ -291,10 +291,13 @@ func (t *TreeConverter) fixSpacing(text string) string {
 	processed = append(processed, text[:2]...)
 	idx := 1
 
+	var inList = (processed[0] == '*' && processed[1] == ' ')
+
 	for i := 2; i < len(text); i++ {
 
 		switch processed[idx] {
 		case '\n':
+
 			if text[i] == '\t' || text[i] == ' ' {
 				continue
 			}
@@ -303,10 +306,14 @@ func (t *TreeConverter) fixSpacing(text string) string {
 				continue
 			}
 
-			// shim to clear whitespace between li tags
-			if processed[idx-1] == '\n' && len(text) > i && (text[i] == '*' && text[i+1] == ' ') {
-				processed[idx] = '*'
+			if inList && text[i] == '\n' {
 				continue
+			}
+
+			if text[i] == '*' && text[i+1] == ' ' {
+				inList = true
+			} else {
+				inList = false
 			}
 
 		case ' ':
