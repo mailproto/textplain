@@ -35,6 +35,7 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 
 	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
 	wrapped = strings.Replace(wrapped, "(\n", "\n( ", -1) // XXX: cheap fix for wrapping open braces. move into WordWrap
+	wrapped = strings.Replace(wrapped, "\n)", " )\n", -1) // XXX: cheap fix for wrapping closed braces. move into WordWrap
 
 	return wrapped, nil
 }
