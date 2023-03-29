@@ -102,6 +102,24 @@ func TestWrappingSpans(t *testing.T) {
 			</p>`,
 			expect: "Test spans\n\ninbetween\n\nline 2\nagain",
 		},
+		{
+			name: "tables and spans",
+			body: `<table>
+						<tbody>
+							<tr>
+								<td>
+									<span>ID</span>
+									<p>ABC-1234</p>
+								</td>
+								<td>
+									<span>Date</span>
+									<p>Mar 29, 2023</p>
+								</td>
+							</tr>
+						</tbody>
+					</table>`,
+			expect: "ID\nABC-1234\n\nDate\nMar 29, 2023",
+		},
 	})
 }
 
