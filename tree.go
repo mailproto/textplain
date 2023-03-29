@@ -177,6 +177,9 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 					parts = append(parts, href)
 					continue
 				} else if text == "" {
+					if containsImg(c) {
+						parts = append(parts, "( "+href+" )")
+					}
 					continue
 				}
 
@@ -193,6 +196,18 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 	}
 
 	return parts, nil
+}
+
+func containsImg(n *html.Node) bool {
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.DataAtom == atom.Img || c.DataAtom == atom.Image {
+			return true
+		}
+		if containsImg(c) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool) ([]string, error) {

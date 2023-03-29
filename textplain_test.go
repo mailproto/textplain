@@ -416,6 +416,11 @@ func TestLinks(t *testing.T) {
 			expect: `Hello 
 ( gopher://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + ` )`,
 		},
+		{
+			name:   "link wrapping image",
+			body:   `<a href="http://example.com"><img src="https://images.com/image.png" /></a>`,
+			expect: `( http://example.com )`,
+		},
 	})
 
 }
