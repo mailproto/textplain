@@ -33,7 +33,10 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 
 	text := t.fixSpacing(strings.Join(lines, ""))
 
-	return WordWrap(strings.TrimSpace(text), lineLength), nil
+	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
+	wrapped = strings.Replace(wrapped, "(\n", "\n( ", -1) // XXX: cheap fix for wrapping open braces. move into WordWrap
+
+	return wrapped, nil
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
