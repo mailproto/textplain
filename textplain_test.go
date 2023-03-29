@@ -386,6 +386,18 @@ func TestLinks(t *testing.T) {
 			body:   `<a href="http://example.com">http://example.com</a>`,
 			expect: `http://example.com`,
 		},
+		{
+			name: "long links stay on a single line",
+			body: `<a href="http://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + `">Hello</a>`,
+			expect: `Hello 
+( http://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + ` )`,
+		},
+		{
+			name: "long non-http links stay on a single line",
+			body: `<a href="gopher://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + `">Hello</a>`,
+			expect: `Hello 
+( gopher://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + ` )`,
+		},
 	})
 
 }

@@ -152,7 +152,7 @@ func NewRegexpConverter() Converter {
 		// fixWordWrappedParens searches for links that got broken by word wrap and moves them
 		// into a single line
 		fixWordWrappedParens: submatchReplacer{
-			regexp: regexp.MustCompile(`\(([ \n])(http[^)]+)([\n ])\)`),
+			regexp: regexp.MustCompile(`\(([ \n])([^)]+)([\n ])\)`),
 			handler: func(t string, submatch []int) string {
 				leadingSpace, content, trailingSpace := t[submatch[2]:submatch[3]], t[submatch[4]:submatch[5]], t[submatch[6]:submatch[7]]
 				var out string
