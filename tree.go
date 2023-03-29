@@ -33,7 +33,11 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 
 	text := t.fixSpacing(strings.Join(lines, ""))
 
-	return WordWrap(strings.TrimSpace(text), lineLength), nil
+	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
+	wrapped = strings.Replace(wrapped, "(\n", "\n( ", -1) // XXX: cheap fix for wrapping open braces. move into WordWrap
+	wrapped = strings.Replace(wrapped, "\n)", " )\n", -1) // XXX: cheap fix for wrapping closed braces. move into WordWrap
+
+	return wrapped, nil
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
@@ -78,6 +82,12 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				if err != nil {
 					return nil, err
 				}
+				if len(parts) > 0 {
+					if p := strings.Trim(parts[len(parts)-1], " \t"); len(p) == 0 || p[len(p)-1] != '\n' {
+						parts = append(parts, "\n")
+					}
+				}
+
 				parts = append(parts, more...)
 				parts = append(parts, "\n\n")
 				continue
@@ -168,6 +178,9 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 					parts = append(parts, href)
 					continue
 				} else if text == "" {
+					if containsImg(c) {
+						parts = append(parts, "( "+href+" )")
+					}
 					continue
 				}
 
@@ -184,6 +197,18 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 	}
 
 	return parts, nil
+}
+
+func containsImg(n *html.Node) bool {
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.DataAtom == atom.Img || c.DataAtom == atom.Image {
+			return true
+		}
+		if containsImg(c) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool) ([]string, error) {
@@ -255,7 +280,7 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
 	for c = n; c != nil; c = c.NextSibling {
 
 		if c.Type == html.ElementNode && c.DataAtom != atom.Span {
-			return c, parts, nil
+			return c.PrevSibling, parts, nil
 		}
 
 		var span string
@@ -291,10 +316,14 @@ func (t *TreeConverter) fixSpacing(text string) string {
 	processed = append(processed, text[:2]...)
 	idx := 1
 
+	var inList = (processed[0] == '*' && processed[1] == ' ')
+
+tidyLoop:
 	for i := 2; i < len(text); i++ {
 
 		switch processed[idx] {
 		case '\n':
+
 			if text[i] == '\t' || text[i] == ' ' {
 				continue
 			}
@@ -303,10 +332,22 @@ func (t *TreeConverter) fixSpacing(text string) string {
 				continue
 			}
 
-			// shim to clear whitespace between li tags
-			if processed[idx-1] == '\n' && len(text) > i && (text[i] == '*' && text[i+1] == ' ') {
-				processed[idx] = '*'
-				continue
+			if inList && text[i] == '\n' {
+				// lookahead through any whitespace to make sure we are still in a list
+				for j := i; j < len(text); j++ {
+					if text[j] == '\t' || text[j] == ' ' || text[j] == '\n' {
+						continue
+					}
+					if text[j] == '*' && j+1 < len(text) && text[j+1] == ' ' {
+						continue tidyLoop
+					}
+				}
+			}
+
+			if text[i] == '*' && text[i+1] == ' ' {
+				inList = true
+			} else {
+				inList = false
 			}
 
 		case ' ':

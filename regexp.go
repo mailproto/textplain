@@ -69,7 +69,7 @@ func NewRegexpConverter() Converter {
 			handler: func(t string, submatch []int) string {
 				href, value := strings.TrimSpace(t[submatch[4]:submatch[5]]), strings.TrimSpace(t[submatch[6]:submatch[7]])
 				var replace string
-				if strings.ToLower(href) == strings.ToLower(value) {
+				if strings.EqualFold(href, value) {
 					replace = value
 				} else if value != "" {
 					replace = fmt.Sprintf("%s ( %s )", value, href)
@@ -152,7 +152,7 @@ func NewRegexpConverter() Converter {
 		// fixWordWrappedParens searches for links that got broken by word wrap and moves them
 		// into a single line
 		fixWordWrappedParens: submatchReplacer{
-			regexp: regexp.MustCompile(`\(([ \n])(http[^)]+)([\n ])\)`),
+			regexp: regexp.MustCompile(`\(([ \n])([^)]+)([\n ])\)`),
 			handler: func(t string, submatch []int) string {
 				leadingSpace, content, trailingSpace := t[submatch[2]:submatch[3]], t[submatch[4]:submatch[5]], t[submatch[6]:submatch[7]]
 				var out string
@@ -184,7 +184,7 @@ func (s *submatchReplacer) Replace(text string) string {
 		finalText += text[start:submatch[0]] + s.handler(text, submatch)
 		start = submatch[1]
 	}
-	return finalText + text[start:len(text)]
+	return finalText + text[start:]
 }
 
 // Convert returns a text-only version of supplied document in UTF-8 format with all HTML tags removed
@@ -251,7 +251,7 @@ func (t *RegexpConverter) Convert(document string, lineLength int) (string, erro
 	//  strip text ignored html. Useful for removing
 	//  headers and footers that aren't needed in the
 	//  text version
-	txt := t.ignoredHTML.ReplaceAllString(string(clean.Bytes()), "")
+	txt := t.ignoredHTML.ReplaceAllString(clean.String(), "")
 
 	//  strip out html comments
 	txt = t.comments.ReplaceAllString(txt, "")

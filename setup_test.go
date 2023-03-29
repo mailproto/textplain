@@ -26,8 +26,8 @@ func runTestCase(t *testing.T, tc testCase) {
 	for name, converter := range converters {
 		t.Run(name, func(tt *testing.T) {
 			result, err := converter.Convert(tc.body, textplain.DefaultLineLength)
-			assert.Nil(t, err)
-			assert.Equal(t, tc.expect, result)
+			assert.Nil(tt, err)
+			assert.Equal(tt, tc.expect, result)
 		})
 	}
 

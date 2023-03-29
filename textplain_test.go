@@ -102,6 +102,24 @@ func TestWrappingSpans(t *testing.T) {
 			</p>`,
 			expect: "Test spans\n\ninbetween\n\nline 2\nagain",
 		},
+		{
+			name: "tables and spans",
+			body: `<table>
+						<tbody>
+							<tr>
+								<td>
+									<span>ID</span>
+									<p>ABC-1234</p>
+								</td>
+								<td>
+									<span>Date</span>
+									<p>Mar 29, 2023</p>
+								</td>
+							</tr>
+						</tbody>
+					</table>`,
+			expect: "ID\nABC-1234\n\nDate\nMar 29, 2023",
+		},
 	})
 }
 
@@ -146,6 +164,16 @@ func TestLists(t *testing.T) {
 			name:   "list items with <ul> and infix whitespace",
 			body:   "<ul><li>item 1</li>  \t\n\t <li>item 2</li><li>item 3</li></ul>",
 			expect: "* item 1\n* item 2\n* item 3",
+		},
+		{
+			name:   "list with leading whitespace",
+			body:   "<p>hello</p>\n\n\n<ul><li>item 1</li><li>item 2</li><li>item 3</li></ul>",
+			expect: "hello\n\n* item 1\n* item 2\n* item 3",
+		},
+		{
+			name:   "list with leading and trailing whitespace",
+			body:   "<p>hello</p>\n\n\n<ul><li>item 1</li><li>item 2</li><li>item 3</li></ul>\n\n<p>hi</p>",
+			expect: "hello\n\n* item 1\n* item 2\n* item 3\n\nhi",
 		},
 	})
 }
@@ -375,6 +403,23 @@ func TestLinks(t *testing.T) {
 			name:   "same text and link",
 			body:   `<a href="http://example.com">http://example.com</a>`,
 			expect: `http://example.com`,
+		},
+		{
+			name: "long links stay on a single line",
+			body: `<a href="http://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + `">Hello</a>`,
+			expect: `Hello 
+( http://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + ` )`,
+		},
+		{
+			name: "long non-http links stay on a single line",
+			body: `<a href="gopher://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + `">Hello</a>`,
+			expect: `Hello 
+( gopher://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + ` )`,
+		},
+		{
+			name:   "link wrapping image",
+			body:   `<a href="http://example.com"><img src="https://images.com/image.png" /></a>`,
+			expect: `( http://example.com )`,
 		},
 	})
 
