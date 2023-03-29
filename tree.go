@@ -81,6 +81,12 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				if err != nil {
 					return nil, err
 				}
+				if len(parts) > 0 {
+					if p := strings.Trim(parts[len(parts)-1], " \t"); len(p) == 0 || p[len(p)-1] != '\n' {
+						parts = append(parts, "\n")
+					}
+				}
+
 				parts = append(parts, more...)
 				parts = append(parts, "\n\n")
 				continue
@@ -258,7 +264,7 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
 	for c = n; c != nil; c = c.NextSibling {
 
 		if c.Type == html.ElementNode && c.DataAtom != atom.Span {
-			return c, parts, nil
+			return c.PrevSibling, parts, nil
 		}
 
 		var span string
