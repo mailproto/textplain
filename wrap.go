@@ -17,11 +17,14 @@ func WordWrap(txt string, lineLength int) string {
 	var final []string
 	for _, line := range strings.Split(txt, "\n") {
 		var startIndex, endIndex int
-		for (len(line) - endIndex) > lineLength {
+		for (len(line)-endIndex) > lineLength && startIndex < len(line) {
 			endIndex += lineLength
 			if endIndex >= len(line) {
 				endIndex = len(line) - 1
+			} else if endIndex < startIndex {
+				endIndex = startIndex
 			}
+
 			newIndex := strings.LastIndex(line[startIndex:endIndex+1], " ")
 			if newIndex <= 0 {
 				continue
