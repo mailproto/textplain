@@ -21,6 +21,8 @@ func WordWrap(txt string, lineLength int) string {
 			endIndex += lineLength
 			if endIndex >= len(line) {
 				endIndex = len(line) - 1
+			} else if endIndex < startIndex {
+				endIndex = startIndex
 			}
 
 			newIndex := strings.LastIndex(line[startIndex:endIndex+1], " ")
