@@ -1,6 +1,7 @@
 package textplain_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/mailproto/textplain"
@@ -19,9 +20,12 @@ func TestWrappingInvalidLength(t *testing.T) {
 	assert.Equal(t, body, wrapped)
 }
 
-func TestWrappingEdgeCase(t *testing.T) {
+func TestWrappingEdgeCases(t *testing.T) {
 	body := "1 23 45\n67\n1234567890 1   "
 
 	wrapped := textplain.WordWrap(body, 13)
 	assert.Equal(t, "1 23 45\n67\n1234567890 1 \n", wrapped)
+
+	wrapped = textplain.WordWrap("1234567890"+strings.Repeat(" ", 20), 10)
+	assert.Equal(t, "1234567890\n", wrapped)
 }
