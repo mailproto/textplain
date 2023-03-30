@@ -14,7 +14,7 @@ var (
 	ErrBodyNotFound = errors.New("could not find a `body` element in your html document")
 )
 
-var defaultConverter = NewRegexpConverter()
+var defaultConverter = NewTreeConverter()
 
 // Convert is a convenience method so the library can be used without initializing a converter
 // because this library relies heavily on regexp objects, it may act as a bottlneck to concurrency
