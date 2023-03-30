@@ -20,7 +20,7 @@ func TestWrappingInvalidLength(t *testing.T) {
 	assert.Equal(t, body, wrapped)
 }
 
-func TestWrappingEdgeCases(t *testing.T) {
+func TestWrappingTrailingWhitespace(t *testing.T) {
 	body := "1 23 45\n67\n1234567890 1   "
 
 	wrapped := textplain.WordWrap(body, 13)
