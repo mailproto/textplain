@@ -30,17 +30,11 @@ func WordWrap(txt string, lineLength int) string {
 			final = append(final, line[startIndex:startIndex+newIndex])
 			startIndex += newIndex
 
-			if startIndex >= len(line) {
-				break
-			}
-
 			// clear any extra space
-			for ; line[startIndex] == ' '; startIndex++ {
+			for ; startIndex < len(line) && line[startIndex] == ' '; startIndex++ {
 			}
 		}
-		if startIndex <= len(line) {
-			final = append(final, line[startIndex:])
-		}
+		final = append(final, line[startIndex:])
 	}
 
 	return strings.Join(final, "\n")
