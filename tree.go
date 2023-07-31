@@ -319,7 +319,7 @@ func (t *TreeConverter) fixSpacing(text string) string {
 	var inList = (processed[0] == '*' && processed[1] == ' ')
 
 tidyLoop:
-	for i := 2; i < len(text); i++ {
+	for i := 2; i < len(text)-1; i++ {
 
 		switch processed[idx] {
 		case '\n':
@@ -338,7 +338,7 @@ tidyLoop:
 					if text[j] == '\t' || text[j] == ' ' || text[j] == '\n' {
 						continue
 					}
-					if text[j] == '*' && j+1 < len(text) && text[j+1] == ' ' {
+					if text[j] == '*' && text[j+1] == ' ' {
 						continue tidyLoop
 					}
 				}
@@ -364,7 +364,7 @@ tidyLoop:
 		idx++
 	}
 
-	return string(processed)
+	return string(append(processed, text[len(text)-1]))
 }
 
 func getAttr(n *html.Node, name string) string {
