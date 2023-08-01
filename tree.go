@@ -338,7 +338,7 @@ tidyLoop:
 					if text[j] == '\t' || text[j] == ' ' || text[j] == '\n' {
 						continue
 					}
-					if text[j] == '*' && text[j+1] == ' ' {
+					if text[j] == '*' && j+1 < len(text) && text[j+1] == ' ' {
 						continue tidyLoop
 					}
 				}
