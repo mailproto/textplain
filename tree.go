@@ -344,7 +344,7 @@ tidyLoop:
 				}
 			}
 
-			if text[i] == '*' && text[i+1] == ' ' {
+			if text[i-1] == '*' && text[i] == ' ' {
 				inList = true
 			} else {
 				inList = false

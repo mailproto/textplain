@@ -548,3 +548,11 @@ func TestStrippingComments(t *testing.T) {
 		},
 	})
 }
+
+func TestFixSpacing(t *testing.T) {
+	runTestCase(t, testCase{
+		name:   "ends in *",
+		body:   "<p>hello</p>*",
+		expect: "hello\n\n*",
+	})
+}

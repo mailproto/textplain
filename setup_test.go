@@ -1,6 +1,7 @@
 package textplain_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/mailproto/textplain"
@@ -16,15 +17,14 @@ func runTestCases(t *testing.T, testCases []testCase) {
 	}
 }
 
-func runTestCase(t *testing.T, tc testCase) {
+func runTestCase(t *testing.T, tc testCase, converters ...textplain.Converter) {
 
-	converters := map[string]textplain.Converter{
-		"regexp": textplain.NewRegexpConverter(),
-		"tree":   textplain.NewTreeConverter(),
+	if len(converters) == 0 {
+		converters = []textplain.Converter{textplain.NewRegexpConverter(), textplain.NewTreeConverter()}
 	}
 
-	for name, converter := range converters {
-		t.Run(name, func(tt *testing.T) {
+	for _, converter := range converters {
+		t.Run(reflect.TypeOf(converter).Elem().Name(), func(tt *testing.T) {
 			result, err := converter.Convert(tc.body, textplain.DefaultLineLength)
 			assert.Nil(tt, err)
 			assert.Equal(tt, tc.expect, result)
