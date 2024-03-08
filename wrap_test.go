@@ -29,3 +29,10 @@ func TestWrappingTrailingWhitespace(t *testing.T) {
 	wrapped = textplain.WordWrap("1234567890"+strings.Repeat(" ", 20), 10)
 	assert.Equal(t, "1234567890\n", wrapped)
 }
+
+func TestWrappingShorterThanLimit(t *testing.T) {
+	body := "1 12 12 1"
+
+	wrapped := textplain.WordWrap(body, 3)
+	assert.Equal(t, "1\n12\n12\n1", wrapped)
+}
