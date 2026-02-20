@@ -3,6 +3,7 @@ package textplain
 import (
 	"strconv"
 	"strings"
+	"unicode"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -77,7 +78,7 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 			switch c.DataAtom {
 			case atom.Script, atom.Style:
 				continue
-			case atom.P:
+			case atom.P, atom.Div:
 				more, err := t.doConvert(c)
 				if err != nil {
 					return nil, err
@@ -306,65 +307,83 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
 	return c, parts, nil
 }
 
-func (t *TreeConverter) fixSpacing(text string) string {
+func (t *TreeConverter) fixSpacing(rt string) string {
 
-	if len(text) < 2 {
-		return text
+	runes := []rune(rt)
+
+	if len(runes) < 2 {
+		return rt
 	}
 
-	processed := make([]byte, 0, len(text))
-	processed = append(processed, text[:2]...)
+	processed := make([]rune, 0, len(runes))
+	processed = append(processed, runes[:2]...)
 	idx := 1
 
 	var inList = (processed[0] == '*' && processed[1] == ' ')
 
 tidyLoop:
-	for i := 2; i < len(text); i++ {
+	for i := 2; i < len(runes); i++ {
+		
+		v := safeSpace(runes[i])
 
 		switch processed[idx] {
 		case '\n':
 
-			if text[i] == '\t' || text[i] == ' ' {
+			if v == '\t' || v == ' ' {
 				continue
 			}
 
-			if processed[idx-1] == '\n' && text[i] == '\n' {
+			if processed[idx-1] == '\n' && v == '\n' {
 				continue
 			}
 
-			if inList && text[i] == '\n' {
+			if inList && v == '\n' {
 				// lookahead through any whitespace to make sure we are still in a list
-				for j := i; j < len(text); j++ {
-					if text[j] == '\t' || text[j] == ' ' || text[j] == '\n' {
+				for j := i; j < len(runes); j++ {
+					vj := safeSpace(runes[j])
+					if vj == '\t' || vj == ' ' || vj == '\n' {
 						continue
 					}
-					if text[j] == '*' && j+1 < len(text) && text[j+1] == ' ' {
+					if vj == '*' && j+1 < len(runes) && safeSpace(runes[j+1]) == ' ' {
 						continue tidyLoop
 					}
 				}
 			}
 
-			if text[i-1] == '*' && text[i] == ' ' {
+			if runes[i-1] == '*' && v == ' ' {
 				inList = true
 			} else {
 				inList = false
 			}
 
 		case ' ':
-			if text[i] == ' ' {
-				continue
+			if v == ' ' {
+				continue 
 			}
-			if text[i] == '\t' || text[i] == '\n' {
+			if v == '\t' || v == '\n' {
 				processed[idx] = '\n'
 				continue
 			}
 		}
 
-		processed = append(processed, text[i])
+		processed = append(processed, v)
 		idx++
 	}
 
 	return string(processed)
+}
+
+func safeSpace(r rune) rune {
+	switch r {
+	case '\t', '\n', ' ':
+		return r
+	case '\u00ad', '\u034f':
+		return ' '
+	}
+	if unicode.IsSpace(r) {
+		return ' '
+	}
+	return r
 }
 
 func getAttr(n *html.Node, name string) string {

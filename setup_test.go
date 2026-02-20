@@ -9,6 +9,7 @@ import (
 )
 
 func runTestCases(t *testing.T, testCases []testCase) {
+	t.Helper()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(tt *testing.T) {
@@ -18,12 +19,15 @@ func runTestCases(t *testing.T, testCases []testCase) {
 }
 
 func runTestCase(t *testing.T, tc testCase, converters ...textplain.Converter) {
-
+	t.Helper()
 	if len(converters) == 0 {
 		converters = []textplain.Converter{textplain.NewRegexpConverter(), textplain.NewTreeConverter()}
 	}
 
 	for _, converter := range converters {
+		if tc.skipRegexp && reflect.TypeOf(converter) == reflect.TypeOf(&textplain.RegexpConverter{}) {
+			continue
+		}
 		t.Run(reflect.TypeOf(converter).Elem().Name(), func(tt *testing.T) {
 			result, err := converter.Convert(tc.body, textplain.DefaultLineLength)
 			assert.Nil(tt, err)
