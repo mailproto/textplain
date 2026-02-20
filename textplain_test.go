@@ -12,6 +12,7 @@ type testCase struct {
 	name   string
 	body   string
 	expect string
+	skipRegexp bool
 }
 
 func TestConvert(t *testing.T) {
@@ -68,6 +69,12 @@ func TestStrippingWhitespace(t *testing.T) {
 			name:   "trailing non-breaking space",
 			body:   "test text&nbsp;",
 			expect: "test text",
+		},
+		{
+			name:   "preheader block",
+			body:   "test text &#8199;&#847; &#8199;&#847; &#8199;&#847; &shy; &shy; &shy;\n\nhello",
+			expect: "test text\n\nhello",
+			skipRegexp: true,
 		},
 		{
 			name:   "infix repeated space",
