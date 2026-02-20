@@ -3,7 +3,6 @@ package textplain
 import (
 	"strconv"
 	"strings"
-	"unicode"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -324,7 +323,7 @@ func (t *TreeConverter) fixSpacing(rt string) string {
 tidyLoop:
 	for i := 2; i < len(runes); i++ {
 		
-		v := safeSpace(runes[i])
+		v := runes[i]
 
 		switch processed[idx] {
 		case '\n':
@@ -340,12 +339,13 @@ tidyLoop:
 			if inList && v == '\n' {
 				// lookahead through any whitespace to make sure we are still in a list
 				for j := i; j < len(runes); j++ {
-					vj := safeSpace(runes[j])
-					if vj == '\t' || vj == ' ' || vj == '\n' {
+					switch runes[j] {
+					case '\t', ' ', '\n':
 						continue
-					}
-					if vj == '*' && j+1 < len(runes) && safeSpace(runes[j+1]) == ' ' {
-						continue tidyLoop
+					case '*':
+						if j+1 < len(runes) && runes[j+1] == ' ' {
+							continue tidyLoop
+						}
 					}
 				}
 			}
@@ -366,6 +366,23 @@ tidyLoop:
 			}
 		}
 
+
+		// handle whitespace characters being used for preheader blocks to produce a cleaner plaintext output
+		switch v {
+		case '\u034f','\u00ad','\u2007':
+			for j := i; j < len(runes); j++ {
+				switch runes[j] {
+				case ' ':
+					continue
+				case '\u034f','\u00ad','\u2007':
+					i = j
+					continue tidyLoop
+				default:
+					break
+				}
+			}
+		}
+
 		processed = append(processed, v)
 		idx++
 	}
@@ -373,18 +390,6 @@ tidyLoop:
 	return string(processed)
 }
 
-func safeSpace(r rune) rune {
-	switch r {
-	case '\t', '\n', ' ':
-		return r
-	case '\u00ad', '\u034f':
-		return ' '
-	}
-	if unicode.IsSpace(r) {
-		return ' '
-	}
-	return r
-}
 
 func getAttr(n *html.Node, name string) string {
 	for _, a := range n.Attr {
