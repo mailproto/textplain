@@ -1,10 +1,10 @@
 module github.com/mailproto/textplain
 
-go 1.18
+go 1.24.0
 
 require (
-	github.com/stretchr/testify v1.8.2
-	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
+	github.com/stretchr/testify v1.11.1
+	golang.org/x/net v0.50.0
 )
 
 require (
