@@ -1,7 +1,6 @@
 package textplain_test
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/mailproto/textplain"
@@ -18,23 +17,12 @@ func runTestCases(t *testing.T, testCases []testCase) {
 	}
 }
 
-func runTestCase(t *testing.T, tc testCase, converters ...textplain.Converter) {
+func runTestCase(t *testing.T, tc testCase) {
 	t.Helper()
-	if len(converters) == 0 {
-		converters = []textplain.Converter{textplain.NewRegexpConverter(), textplain.NewTreeConverter()}
-	}
 
-	for _, converter := range converters {
-		if tc.skipRegexp && reflect.TypeOf(converter) == reflect.TypeOf(&textplain.RegexpConverter{}) {
-			continue
-		}
-		t.Run(reflect.TypeOf(converter).Elem().Name(), func(tt *testing.T) {
-			result, err := converter.Convert(tc.body, textplain.DefaultLineLength)
-			assert.Nil(tt, err)
-			assert.Equal(tt, tc.expect, result)
-		})
-	}
-
+	result, err := textplain.Convert(tc.body, textplain.DefaultLineLength)
+	assert.Nil(t, err)
+	assert.Equal(t, tc.expect, result)
 }
 
 const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd"><html><head>
@@ -62,13 +50,6 @@ const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "htt
 </ol>
 
 <img src="https://example.com/footer-animation.gif" /></body></html>`
-
-func BenchmarkRegexp(b *testing.B) {
-	converter := textplain.NewRegexpConverter()
-	for i := 0; i < b.N; i++ {
-		_, _ = converter.Convert(html, textplain.DefaultLineLength)
-	}
-}
 
 func BenchmarkTree(b *testing.B) {
 	converter := textplain.NewTreeConverter()
