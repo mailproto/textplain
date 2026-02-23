@@ -7,22 +7,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func runTestCases(t *testing.T, testCases []testCase) {
+func runTestCases(t *testing.T, testCases ...testCase) {
 	t.Helper()
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(tt *testing.T) {
-			runTestCase(tt, tc)
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			result, err := textplain.Convert(tc.body, textplain.DefaultLineLength)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expect, result)
 		})
 	}
-}
-
-func runTestCase(t *testing.T, tc testCase) {
-	t.Helper()
-
-	result, err := textplain.Convert(tc.body, textplain.DefaultLineLength)
-	assert.Nil(t, err)
-	assert.Equal(t, tc.expect, result)
 }
 
 const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd"><html><head>
@@ -53,7 +48,7 @@ const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "htt
 
 func BenchmarkTree(b *testing.B) {
 	converter := textplain.NewTreeConverter()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = converter.Convert(html, textplain.DefaultLineLength)
 	}
 }
