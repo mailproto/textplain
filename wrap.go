@@ -8,13 +8,13 @@ import "strings"
 // slower in cases with long unbroken lines
 // https://github.com/premailer/premailer/blob/7c94e7a/lib/premailer/html_to_plain_text.rb#L116
 func WordWrap(txt string, lineLength int) string {
-
 	// A line length of zero or less indicates no wrapping
 	if lineLength <= 0 {
 		return txt
 	}
 
 	var final []string
+
 	for line := range strings.SplitSeq(txt, "\n") {
 		var startIndex, endIndex int
 		for (len(line)-endIndex) > lineLength && startIndex < len(line) {
@@ -38,6 +38,7 @@ func WordWrap(txt string, lineLength int) string {
 			for ; startIndex < len(line) && line[startIndex] == ' '; startIndex++ {
 			}
 		}
+
 		final = append(final, line[startIndex:])
 	}
 

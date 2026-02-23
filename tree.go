@@ -14,7 +14,6 @@ func NewTreeConverter() Converter {
 }
 
 func (t *TreeConverter) Convert(document string, lineLength int) (string, error) {
-
 	root, err := html.Parse(strings.NewReader(document))
 	if err != nil {
 		return "", err
@@ -44,10 +43,12 @@ func (t *TreeConverter) findBody(n *html.Node) *html.Node {
 		if n.Type == html.ElementNode && n.DataAtom == atom.Body {
 			return n
 		}
+
 		if body := t.findBody(c); body != nil {
 			return body
 		}
 	}
+
 	return nil
 }
 
@@ -65,10 +66,12 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				for s := c.NextSibling; s != nil; s = s.NextSibling {
 					if s.Type == html.CommentNode && strings.TrimSpace(s.Data) == "end text/html" {
 						c = s
+
 						break
 					}
 				}
 			}
+
 			continue
 		case html.TextNode:
 			parts = append(parts, c.Data)
@@ -81,6 +84,7 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				if err != nil {
 					return nil, err
 				}
+
 				if len(parts) > 0 {
 					if p := strings.Trim(parts[len(parts)-1], " \t"); len(p) == 0 || p[len(p)-1] != '\n' {
 						parts = append(parts, "\n")
@@ -89,69 +93,89 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 
 				parts = append(parts, more...)
 				parts = append(parts, "\n\n")
+
 				continue
 			case atom.Ul:
 				li, err := t.listItems(c, unordered)
 				if err != nil {
 					return nil, err
 				}
+
 				parts = append(parts, li...)
+
 				continue
 			case atom.Ol:
 				li, err := t.listItems(c, unordered) // XXX: change to ordered
 				if err != nil {
 					return nil, err
 				}
+
 				parts = append(parts, li...)
+
 				continue
 			case atom.Li:
 				item, err := t.listItem(c, "* ")
 				if err != nil {
 					return nil, err
 				}
+
 				parts = append(parts, item)
+
 				continue
 			case atom.Span:
-				var more []string
-				var err error
+				var (
+					more []string
+					err  error
+				)
+
 				c, more, err = t.wrapSpans(c)
 				if err != nil {
 					return nil, err
 				}
+
 				parts = append(parts, more...)
 
 				if c == nil {
 					return parts, nil
 				}
+
 				continue
 			case atom.Br:
 				parts = append(parts, "\n")
+
 				continue
 			case atom.H1:
 				more, err := t.headerBlock(c, "*", true)
 				if err != nil {
 					return nil, err
 				}
+
 				parts = append(parts, more...)
+
 				continue
 			case atom.H2:
 				more, err := t.headerBlock(c, "-", true)
 				if err != nil {
 					return nil, err
 				}
+
 				parts = append(parts, more...)
+
 				continue
 			case atom.H3, atom.H4, atom.H5, atom.H6:
 				more, err := t.headerBlock(c, "-", false)
 				if err != nil {
 					return nil, err
 				}
+
 				parts = append(parts, more...)
+
 				continue
 			case atom.Img, atom.Image:
 				if alt := getAttr(c, "alt"); alt != "" {
 					parts = append(parts, strings.TrimSpace(alt))
 				}
+
 				continue
 			case atom.A:
 				more, err := t.doConvert(c)
@@ -162,8 +186,10 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				href := getAttr(c, "href")
 				if href == "" {
 					parts = append(parts, more...)
+
 					continue
 				}
+
 				text := strings.TrimSpace(strings.Join(more, ""))
 				if text == "" {
 					if alt := getAttr(c, "alt"); alt != "" {
@@ -175,11 +201,13 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 
 				if text == href {
 					parts = append(parts, href)
+
 					continue
 				} else if text == "" {
 					if containsImg(c) {
 						parts = append(parts, "( "+href+" )")
 					}
+
 					continue
 				}
 
@@ -188,10 +216,12 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 				continue
 			}
 		}
+
 		more, err := t.doConvert(c)
 		if err != nil {
 			return nil, err
 		}
+
 		parts = append(parts, more...)
 	}
 
@@ -203,10 +233,12 @@ func containsImg(n *html.Node) bool {
 		if c.DataAtom == atom.Img || c.DataAtom == atom.Image {
 			return true
 		}
+
 		if containsImg(c) {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -215,13 +247,16 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 	if err != nil {
 		return nil, err
 	}
+
 	headerText := strings.TrimSpace(strings.Join(content, ""))
+
 	var maxSize int
 	for line := range strings.SplitSeq(headerText, "\n") {
 		if l := len(strings.TrimSpace(line)); l > maxSize {
 			maxSize = l
 		}
 	}
+
 	delimiter := strings.Repeat(blockChar, maxSize)
 
 	block := []string{"\n\n"}
@@ -235,10 +270,12 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 func unordered(idx int) string { return "* " }
 
 func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) ([]string, error) {
-	var parts []string
-	var idx = 1
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
+	var (
+		parts []string
+		idx   = 1
+	)
 
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		switch c.DataAtom {
 		case atom.Li:
 			prefix := prefixer(idx)
@@ -248,12 +285,14 @@ func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) ([]st
 			if err != nil {
 				return nil, err
 			}
+
 			parts = append(parts, item)
 		default:
 			contents, err := t.doConvert(c)
 			if err != nil {
 				return nil, err
 			}
+
 			parts = append(parts, contents...)
 		}
 	}
@@ -271,17 +310,16 @@ func (t *TreeConverter) listItem(n *html.Node, prefix string) (string, error) {
 }
 
 func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
-
 	var parts []string
 
 	var c *html.Node
 	for c = n; c != nil; c = c.NextSibling {
-
 		if c.Type == html.ElementNode && c.DataAtom != atom.Span {
 			return c.PrevSibling, parts, nil
 		}
 
 		var span string
+
 		switch c.Type {
 		case html.ElementNode:
 			children, err := t.doConvert(c)
@@ -305,7 +343,6 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
 }
 
 func (t *TreeConverter) fixSpacing(rt string) string {
-
 	runes := []rune(rt)
 
 	if len(runes) < 2 {
@@ -320,12 +357,10 @@ func (t *TreeConverter) fixSpacing(rt string) string {
 
 tidyLoop:
 	for i := 2; i < len(runes); i++ {
-
 		v := runes[i]
 
 		switch processed[idx] {
 		case '\n':
-
 			if v == '\t' || v == ' ' {
 				continue
 			}
@@ -358,8 +393,10 @@ tidyLoop:
 			if v == ' ' {
 				continue
 			}
+
 			if v == '\t' || v == '\n' {
 				processed[idx] = '\n'
+
 				continue
 			}
 		}
@@ -374,6 +411,7 @@ tidyLoop:
 					continue
 				case '\u034f', '\u00ad', '\u2007':
 					i = j
+
 					continue tidyLoop
 				default:
 					break whitespaceLoop
@@ -394,5 +432,6 @@ func getAttr(n *html.Node, name string) string {
 			return a.Val
 		}
 	}
+
 	return ""
 }
