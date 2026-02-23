@@ -15,7 +15,7 @@ func WordWrap(txt string, lineLength int) string {
 	}
 
 	var final []string
-	for _, line := range strings.Split(txt, "\n") {
+	for line := range strings.SplitSeq(txt, "\n") {
 		var startIndex, endIndex int
 		for (len(line)-endIndex) > lineLength && startIndex < len(line) {
 			endIndex += lineLength

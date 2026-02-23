@@ -1,7 +1,6 @@
 package textplain
 
 import (
-	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -34,8 +33,8 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 	text := t.fixSpacing(strings.Join(lines, ""))
 
 	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
-	wrapped = strings.Replace(wrapped, "(\n", "\n( ", -1) // XXX: cheap fix for wrapping open braces. move into WordWrap
-	wrapped = strings.Replace(wrapped, "\n)", " )\n", -1) // XXX: cheap fix for wrapping closed braces. move into WordWrap
+	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
+	wrapped = strings.ReplaceAll(wrapped, "\n)", " )\n") // XXX: cheap fix for wrapping closed braces. move into WordWrap
 
 	return wrapped, nil
 }
@@ -218,7 +217,7 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 	}
 	headerText := strings.TrimSpace(strings.Join(content, ""))
 	var maxSize int
-	for _, line := range strings.Split(headerText, "\n") {
+	for line := range strings.SplitSeq(headerText, "\n") {
 		if l := len(strings.TrimSpace(line)); l > maxSize {
 			maxSize = l
 		}
@@ -234,7 +233,6 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 }
 
 func unordered(idx int) string { return "* " }
-func ordered(idx int) string   { return strconv.Itoa(idx) + ". " }
 
 func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) ([]string, error) {
 	var parts []string
@@ -322,7 +320,7 @@ func (t *TreeConverter) fixSpacing(rt string) string {
 
 tidyLoop:
 	for i := 2; i < len(runes); i++ {
-		
+
 		v := runes[i]
 
 		switch processed[idx] {
@@ -358,7 +356,7 @@ tidyLoop:
 
 		case ' ':
 			if v == ' ' {
-				continue 
+				continue
 			}
 			if v == '\t' || v == '\n' {
 				processed[idx] = '\n'
@@ -366,19 +364,19 @@ tidyLoop:
 			}
 		}
 
-
 		// handle whitespace characters being used for preheader blocks to produce a cleaner plaintext output
 		switch v {
-		case '\u034f','\u00ad','\u2007':
+		case '\u034f', '\u00ad', '\u2007':
+		whitespaceLoop:
 			for j := i; j < len(runes); j++ {
 				switch runes[j] {
 				case ' ':
 					continue
-				case '\u034f','\u00ad','\u2007':
+				case '\u034f', '\u00ad', '\u2007':
 					i = j
 					continue tidyLoop
 				default:
-					break
+					break whitespaceLoop
 				}
 			}
 		}
@@ -389,7 +387,6 @@ tidyLoop:
 
 	return string(processed)
 }
-
 
 func getAttr(n *html.Node, name string) string {
 	for _, a := range n.Attr {
