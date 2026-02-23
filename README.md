@@ -1,6 +1,6 @@
 # Textplain
 
-This project began as a port of the html_to_plaintext logic from github.com/premailer/premailer and applies the same basic set of rules for generating a text/plain copy of an email, given the text/html version.
+This project began as a port of the html_to_plaintext logic from [github.com/premailer/premailer](https://github.com/premailer/premailer) and applies the same basic set of rules for generating a text/plain copy of an email, given the text/html version.
 
 ## Usage
 
