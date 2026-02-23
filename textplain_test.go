@@ -6,6 +6,7 @@ import (
 
 	"github.com/mailproto/textplain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testCase struct {
@@ -270,7 +271,7 @@ func TestHeadings(t *testing.T) {
 
 func TestAppliesLineWrapping(t *testing.T) {
 	txt, err := textplain.Convert(strings.Repeat("test ", 100), 20)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var offendingLines []int
 
@@ -430,7 +431,7 @@ func TestLinks(t *testing.T) {
 // see https://github.com/premailer/premailer/issues/72
 func TestMultipleLinksPerLine(t *testing.T) {
 	plain, err := textplain.Convert(`<p>This is <a href="http://www.google.com" >link1</a> and <a href="http://www.google.com" >link2 </a> is next.</p>`, 10000)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, `This is link1 ( http://www.google.com ) and link2 ( http://www.google.com ) is next.`, plain)
 }
