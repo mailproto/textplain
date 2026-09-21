@@ -176,6 +176,26 @@ func TestLists(t *testing.T) {
 			expect: "1. one\n2. two\n1. fresh",
 		},
 		testCase{
+			name:   "<ol start> seeds the numbering",
+			body:   `<ol start="5"><li>a</li><li>b</li></ol>`,
+			expect: "5. a\n6. b",
+		},
+		testCase{
+			name:   "<ol start> may be negative",
+			body:   `<ol start="-1"><li>a</li><li>b</li></ol>`,
+			expect: "-1. a\n0. b",
+		},
+		testCase{
+			name:   "unparseable <ol start> falls back to one",
+			body:   `<ol start="abc"><li>a</li><li>b</li></ol>`,
+			expect: "1. a\n2. b",
+		},
+		testCase{
+			name:   "start on <ul> is ignored",
+			body:   `<ul start="5"><li>a</li><li>b</li></ul>`,
+			expect: "* a\n* b",
+		},
+		testCase{
 			name:   "list items with <ul> and infix whitespace",
 			body:   "<ul><li>item 1</li>  \t\n\t <li>item 2</li><li>item 3</li></ul>",
 			expect: "* item 1\n* item 2\n* item 3",
@@ -463,6 +483,21 @@ func TestLinks(t *testing.T) {
 			body:   `<a href="http://example.com" alt="http://example.com"></a>`,
 			expect: `http://example.com`,
 		},
+		testCase{
+			name:   "fragment only link keeps just its text",
+			body:   `<a href="#section">Jump</a>`,
+			expect: `Jump`,
+		},
+		testCase{
+			name:   "bare fragment link keeps just its text",
+			body:   `<a href="#">Top</a>`,
+			expect: `Top`,
+		},
+		testCase{
+			name:   "a fragment on a real url is still a link",
+			body:   `<a href="http://example.com/page#frag">Deep</a>`,
+			expect: `Deep ( http://example.com/page#frag )`,
+		},
 	)
 }
 
@@ -670,4 +705,150 @@ func TestHorizontalRule(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, strings.Repeat("-", textplain.DefaultLineLength), result)
 	})
+}
+
+func TestDefinitionLists(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "terms and definitions each get a line",
+			body:   `<dl><dt>Term</dt><dd>Definition</dd><dt>T2</dt><dd>D2</dd></dl>`,
+			expect: "Term\nDefinition\nT2\nD2",
+		},
+		testCase{
+			name:   "a term may have several definitions",
+			body:   `<dl><dt>Term</dt><dd>One</dd><dd>Two</dd></dl>`,
+			expect: "Term\nOne\nTwo",
+		},
+		testCase{
+			name:   "definitions keep their own markup",
+			body:   `<dl><dt>Term</dt><dd><a href="http://example.com">link</a></dd></dl>`,
+			expect: "Term\nlink ( http://example.com )",
+		},
+	)
+}
+
+func TestHiddenContent(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "display none",
+			body:   `<p>shown</p><p style="display:none">hidden preheader</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "declarations are matched regardless of case or spacing",
+			body:   `<p>shown</p><p style="color:red; DISPLAY : NONE ;margin:0">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "visibility hidden",
+			body:   `<p>shown</p><p style="visibility:hidden">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "zero opacity",
+			body:   `<p>shown</p><p style="opacity:0">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "zero font size with a unit",
+			body:   `<p>shown</p><p style="font-size:0px">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "zero max height",
+			body:   `<p>shown</p><p style="max-height:0">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "hidden attribute",
+			body:   `<p>shown</p><div hidden>hidden</div>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "aria-hidden true",
+			body:   `<p>shown</p><p aria-hidden="true">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "the whole subtree goes",
+			body:   `<p>shown</p><div style="display:none"><p>nested</p><a href="http://example.com">link</a></div>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "hidden span in a run of spans",
+			body:   `<p>a</p><span>visible</span><span style="display:none">hidden</span>`,
+			expect: "a\n\nvisible",
+		},
+		testCase{
+			name:   "hidden list item does not take a number",
+			body:   `<ol><li>a</li><li style="display:none">hidden</li><li>b</li></ol>`,
+			expect: "1. a\n2. b",
+		},
+		testCase{
+			name:   "hidden table row",
+			body:   `<table><tr><td>cell</td></tr><tr style="display:none"><td>hidden row</td></tr></table>`,
+			expect: "cell",
+		},
+		// values near zero are not zero
+		testCase{
+			name:   "fractional opacity stays visible",
+			body:   `<p>shown</p><p style="opacity:0.5">still visible</p>`,
+			expect: "shown\n\nstill visible",
+		},
+		testCase{
+			name:   "fractional font size stays visible",
+			body:   `<p>shown</p><p style="font-size:0.9em">still visible</p>`,
+			expect: "shown\n\nstill visible",
+		},
+		testCase{
+			name:   "aria-hidden false stays visible",
+			body:   `<p>shown</p><p aria-hidden="false">still visible</p>`,
+			expect: "shown\n\nstill visible",
+		},
+	)
+}
+
+func TestNonContentElements(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "select options are not document text",
+			body:   `<p>a</p><select><option>opt1</option><option>opt2</option></select>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "textarea holds a value, not text",
+			body:   `<p>a</p><textarea>editable</textarea>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "iframe fallback is ignored",
+			body:   `<p>a</p><iframe src="x.html">fallback</iframe>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "svg title is metadata",
+			body:   `<p>a</p><svg><title>icon</title></svg>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "media fallback is ignored",
+			body:   `<p>a</p><video src="v.mp4">no video support</video>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "template contents are inert",
+			body:   `<p>a</p><template><p>inert</p></template>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "noscript is kept, since scripts never run here",
+			body:   `<p>a</p><noscript>shown when scripts are off</noscript>`,
+			expect: "a\n\nshown when scripts are off",
+		},
+		testCase{
+			name:   "button labels are visible text",
+			body:   `<p>a</p><button>Confirm your email</button>`,
+			expect: "a\n\nConfirm your email",
+		},
+	)
 }
