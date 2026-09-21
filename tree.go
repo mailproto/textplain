@@ -8,13 +8,10 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-// Blockquote extent is marked during conversion and turned into line prefixes
-// after wrapping, so that a quote running over several lines stays marked on
-// every one of them. The parser never emits these, so they cannot collide with
-// content.
 const (
 	quoteOpen  = "\x01"
 	quoteClose = "\x02"
+  horizontalRule = "\x00"
 )
 
 type TreeConverter struct{}
@@ -35,6 +32,15 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 	}
 
 	text := t.fixSpacing(strings.Join(t.doConvert(body), ""))
+
+	if strings.Contains(text, horizontalRule) {
+		width := lineLength
+		if width <= 0 {
+			width = DefaultLineLength
+		}
+
+		text = strings.ReplaceAll(text, horizontalRule, strings.Repeat("-", width))
+	}
 
 	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
 	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
@@ -82,8 +88,21 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 			parts = append(parts, c.Data)
 		case html.ElementNode:
 			switch c.DataAtom {
-			case atom.Script, atom.Style:
+			// none of these render their text as document content: the media and
+			// frame elements hold legacy fallback that conforming renderers ignore,
+			// svg/math titles are metadata, and a template is inert
+			case atom.Script, atom.Style, atom.Template,
+				atom.Svg, atom.Math,
+				atom.Iframe, atom.Object, atom.Embed, atom.Canvas, atom.Audio, atom.Video,
+				atom.Select, atom.Datalist, atom.Textarea:
 				continue
+			}
+
+			if isHidden(c) {
+				continue
+			}
+
+			switch c.DataAtom {
 			case atom.P, atom.Div:
 				more := t.doConvert(c)
 
@@ -107,6 +126,10 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 				continue
 			case atom.Li:
 				parts = append(parts, t.listItem(c, "* "))
+
+				continue
+			case atom.Dt, atom.Dd:
+				parts = append(parts, t.listItem(c, ""))
 
 				continue
 			case atom.Td, atom.Th:
@@ -140,6 +163,10 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 				parts = append(parts, "\n")
 
 				continue
+			case atom.Hr:
+				parts = append(parts, "\n\n", horizontalRule, "\n\n")
+
+				continue
 			case atom.H1:
 				parts = append(parts, t.headerBlock(c, "*", true)...)
 
@@ -161,8 +188,9 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 			case atom.A:
 				more := t.doConvert(c)
 
-				href := getAttr(c, "href")
-				if href == "" {
+				href := strings.TrimSpace(getAttr(c, "href"))
+				// a fragment only points within the document, so only its text carries over
+				if href == "" || strings.HasPrefix(href, "#") {
 					parts = append(parts, more...)
 
 					continue
@@ -187,7 +215,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 					continue
 				}
 
-				parts = append(parts, text, " ( ", strings.TrimSpace(href), " )")
+				parts = append(parts, text, " ( ", href, " )")
 
 				continue
 			}
@@ -277,13 +305,26 @@ func unordered(int) string { return "* " }
 
 func ordered(idx int) string { return strconv.Itoa(idx) + ". " }
 
+// listStart reads the start attribute of an ol, which may be negative
+func listStart(n *html.Node) int {
+	if start, err := strconv.Atoi(strings.TrimSpace(getAttr(n, "start"))); err == nil {
+		return start
+	}
+
+	return 1
+}
+
 func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []string {
 	var (
 		parts []string
-		idx   = 1
+		idx   = listStart(n)
 	)
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && isHidden(c) {
+			continue
+		}
+
 		switch c.DataAtom {
 		case atom.Li:
 			parts = append(parts, t.listItem(c, prefixer(idx)))
@@ -307,6 +348,10 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string) {
 	for c = n; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && c.DataAtom != atom.Span {
 			return c.PrevSibling, parts
+		}
+
+		if c.Type == html.ElementNode && isHidden(c) {
+			continue
 		}
 
 		var span string
@@ -411,6 +456,64 @@ tidyLoop:
 	}
 
 	return string(processed)
+}
+
+// isHidden reports whether an element is kept out of the rendered message.
+// Preheader text meant only for the inbox preview is the usual case.
+func isHidden(n *html.Node) bool {
+	for _, a := range n.Attr {
+		switch a.Key {
+		case "hidden":
+			return true
+		case "aria-hidden":
+			if strings.EqualFold(strings.TrimSpace(a.Val), "true") {
+				return true
+			}
+		case "style":
+			if hiddenByStyle(a.Val) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func hiddenByStyle(style string) bool {
+	for declaration := range strings.SplitSeq(style, ";") {
+		property, value, ok := strings.Cut(declaration, ":")
+		if !ok {
+			continue
+		}
+
+		property = strings.ToLower(strings.TrimSpace(property))
+		value = strings.ToLower(strings.TrimSpace(value))
+
+		switch property {
+		case "display":
+			if value == "none" {
+				return true
+			}
+		case "visibility":
+			if value == "hidden" || value == "collapse" {
+				return true
+			}
+		case "opacity", "font-size", "max-height":
+			if isZeroValue(value) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// isZeroValue reports whether a css number or length is zero, with or without a unit,
+// so that opacity:0.5 and font-size:0.9em are not mistaken for zero
+func isZeroValue(value string) bool {
+	size, err := strconv.ParseFloat(strings.TrimRight(value, "abcdefghijklmnopqrstuvwxyz%"), 64)
+
+	return err == nil && size == 0
 }
 
 func getAttr(n *html.Node, name string) string {
