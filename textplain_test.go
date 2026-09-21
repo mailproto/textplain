@@ -642,3 +642,84 @@ func TestTables(t *testing.T) {
 		},
 	)
 }
+
+func TestHiddenContent(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "display none",
+			body:   `<p>shown</p><p style="display:none">hidden preheader</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "declarations are matched regardless of case or spacing",
+			body:   `<p>shown</p><p style="color:red; DISPLAY : NONE ;margin:0">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "visibility hidden",
+			body:   `<p>shown</p><p style="visibility:hidden">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "zero opacity",
+			body:   `<p>shown</p><p style="opacity:0">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "zero font size with a unit",
+			body:   `<p>shown</p><p style="font-size:0px">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "zero max height",
+			body:   `<p>shown</p><p style="max-height:0">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "hidden attribute",
+			body:   `<p>shown</p><div hidden>hidden</div>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "aria-hidden true",
+			body:   `<p>shown</p><p aria-hidden="true">hidden</p>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "the whole subtree goes",
+			body:   `<p>shown</p><div style="display:none"><p>nested</p><a href="http://example.com">link</a></div>`,
+			expect: "shown",
+		},
+		testCase{
+			name:   "hidden span in a run of spans",
+			body:   `<p>a</p><span>visible</span><span style="display:none">hidden</span>`,
+			expect: "a\n\nvisible",
+		},
+		testCase{
+			name:   "hidden list item does not take a number",
+			body:   `<ol><li>a</li><li style="display:none">hidden</li><li>b</li></ol>`,
+			expect: "1. a\n2. b",
+		},
+		testCase{
+			name:   "hidden table row",
+			body:   `<table><tr><td>cell</td></tr><tr style="display:none"><td>hidden row</td></tr></table>`,
+			expect: "cell",
+		},
+		// values near zero are not zero
+		testCase{
+			name:   "fractional opacity stays visible",
+			body:   `<p>shown</p><p style="opacity:0.5">still visible</p>`,
+			expect: "shown\n\nstill visible",
+		},
+		testCase{
+			name:   "fractional font size stays visible",
+			body:   `<p>shown</p><p style="font-size:0.9em">still visible</p>`,
+			expect: "shown\n\nstill visible",
+		},
+		testCase{
+			name:   "aria-hidden false stays visible",
+			body:   `<p>shown</p><p aria-hidden="false">still visible</p>`,
+			expect: "shown\n\nstill visible",
+		},
+	)
+}
