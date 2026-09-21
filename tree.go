@@ -8,6 +8,15 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+// Blockquote extent is marked during conversion and turned into line prefixes
+// after wrapping, so that a quote running over several lines stays marked on
+// every one of them. The parser never emits these, so they cannot collide with
+// content.
+const (
+	quoteOpen  = "\x01"
+	quoteClose = "\x02"
+)
+
 type TreeConverter struct{}
 
 func NewTreeConverter() Converter {
@@ -31,7 +40,7 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
 	wrapped = strings.ReplaceAll(wrapped, "\n)", " )\n") // XXX: cheap fix for wrapping closed braces. move into WordWrap
 
-	return wrapped, nil
+	return applyQuotes(wrapped), nil
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
@@ -122,6 +131,11 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 				}
 
 				continue
+			case atom.Blockquote:
+				inner := strings.Trim(strings.Join(t.doConvert(c), ""), "\n")
+				parts = append(parts, "\n\n", quoteOpen, inner, quoteClose, "\n\n")
+
+				continue
 			case atom.Br:
 				parts = append(parts, "\n")
 
@@ -183,6 +197,46 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 	}
 
 	return parts
+}
+
+// applyQuotes turns the marked blockquote regions into a "> " prefix on every
+// line they cover, including lines produced by wrapping
+func applyQuotes(text string) string {
+	if !strings.Contains(text, quoteOpen) {
+		return text
+	}
+
+	strip := strings.NewReplacer(quoteOpen, "", quoteClose, "")
+
+	var (
+		out   strings.Builder
+		depth int
+	)
+
+	for i, line := range strings.Split(text, "\n") {
+		if i > 0 {
+			out.WriteByte('\n')
+		}
+
+		depth += strings.Count(line, quoteOpen)
+
+		closes := strings.Count(line, quoteClose)
+		line = strip.Replace(line)
+
+		switch {
+		case depth <= 0:
+		case strings.TrimSpace(line) == "":
+			out.WriteString(strings.TrimRight(strings.Repeat("> ", depth), " "))
+		default:
+			out.WriteString(strings.Repeat("> ", depth))
+		}
+
+		out.WriteString(line)
+
+		depth -= closes
+	}
+
+	return out.String()
 }
 
 func containsImg(n *html.Node) bool {
