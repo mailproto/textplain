@@ -21,6 +21,9 @@ const (
 	quoteOpen  = "\x01"
 	quoteClose = "\x02"
 
+	// one level of list nesting, since fixSpacing strips leading whitespace
+	indentMark = "\x03"
+
 	// preformatted text, lifted out so that nothing reflows it
 	preOpen        = "\x04"
 	preClose       = "\x05"
@@ -65,7 +68,7 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 		wrapped = strings.Replace(wrapped, prePlaceholder, block, 1)
 	}
 
-	return applyQuotes(wrapped), nil
+	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")), nil
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
@@ -136,10 +139,12 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				continue
 			case atom.Ul:
+				parts = append(parts, nestedListBreak(n)...)
 				parts = append(parts, t.listItems(c, unordered)...)
 
 				continue
 			case atom.Ol:
+				parts = append(parts, nestedListBreak(n)...)
 				parts = append(parts, t.listItems(c, ordered)...)
 
 				continue
@@ -423,8 +428,40 @@ func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []str
 	return parts
 }
 
+// nestedListBreak starts a list nested in an item on its own line, so that it
+// does not run into the item's text. listItem relies on that break to tell the
+// two apart.
+func nestedListBreak(parent *html.Node) []string {
+	if parent != nil && parent.DataAtom == atom.Li {
+		return []string{"\n"}
+	}
+
+	return nil
+}
+
 func (t *TreeConverter) listItem(n *html.Node, prefix string) string {
-	return strings.TrimSpace(prefix+strings.Join(t.doConvert(n), "")) + "\n"
+	content := strings.Trim(strings.Join(t.doConvert(n), ""), "\n")
+
+	// everything after the first line came from a nested list and belongs one
+	// level further in; marks already present deepen as they bubble up
+	first, nested, _ := strings.Cut(content, "\n")
+
+	var out strings.Builder
+
+	out.WriteString(strings.TrimSpace(prefix + first))
+	out.WriteString("\n")
+
+	for line := range strings.SplitSeq(nested, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		out.WriteString(indentMark)
+		out.WriteString(strings.TrimLeft(line, " \t"))
+		out.WriteString("\n")
+	}
+
+	return out.String()
 }
 
 func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string) {
