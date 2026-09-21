@@ -163,7 +163,17 @@ func TestLists(t *testing.T) {
 		testCase{
 			name:   "list items with <ol>",
 			body:   "<ol><li>item 1</li><li>item 2</li><li>item 3</li></ol>",
-			expect: "* item 1\n* item 2\n* item 3",
+			expect: "1. item 1\n2. item 2\n3. item 3",
+		},
+		testCase{
+			name:   "<ol> numbering skips non-item children",
+			body:   "<ol>\n\n<li>item 1</li>\n\n<li>item 2</li>\n</ol>",
+			expect: "1. item 1\n2. item 2",
+		},
+		testCase{
+			name:   "nested <ol> numbers independently",
+			body:   "<ol><li>one</li><li>two</li></ol><ol><li>fresh</li></ol>",
+			expect: "1. one\n2. two\n1. fresh",
 		},
 		testCase{
 			name:   "list items with <ul> and infix whitespace",
@@ -422,6 +432,26 @@ func TestLinks(t *testing.T) {
 			name:   "link wrapping image",
 			body:   `<a href="http://example.com"><img src="https://images.com/image.png" /></a>`,
 			expect: `( http://example.com )`,
+		},
+		testCase{
+			name:   "empty link falls back to alt",
+			body:   `<a href="http://example.com" alt="Example"></a>`,
+			expect: `Example ( http://example.com )`,
+		},
+		testCase{
+			name:   "link alt labels an image with no alt of its own",
+			body:   `<a href="http://example.com" alt="Example"><img src="https://images.com/image.png" /></a>`,
+			expect: `Example ( http://example.com )`,
+		},
+		testCase{
+			name:   "image alt takes precedence over link alt",
+			body:   `<a href="http://example.com" alt="Link"><img alt="Image" src="https://images.com/image.png" /></a>`,
+			expect: `Image ( http://example.com )`,
+		},
+		testCase{
+			name:   "alt matching href is not repeated",
+			body:   `<a href="http://example.com" alt="http://example.com"></a>`,
+			expect: `http://example.com`,
 		},
 	)
 }
