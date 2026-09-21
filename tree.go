@@ -43,11 +43,7 @@ func NewTreeConverter() Converter {
 	return &TreeConverter{}
 }
 
-func (t *TreeConverter) Convert(document string, lineLength int) (string, error) {
-	return t.ConvertWithOptions(document, WithLineLength(lineLength))
-}
-
-func (t *TreeConverter) ConvertWithOptions(document string, opts ...Option) (string, error) {
+func (t *TreeConverter) Convert(document string, opts ...Option) (string, error) {
 	root, err := html.Parse(strings.NewReader(document))
 	if err != nil {
 		return "", err

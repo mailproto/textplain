@@ -51,7 +51,7 @@ func TestOptions(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			result, err := textplain.ConvertWithOptions(optionsDoc, tc.opts...)
+			result, err := textplain.Convert(optionsDoc, tc.opts...)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expect, result)
 		})
@@ -61,23 +61,29 @@ func TestOptions(t *testing.T) {
 func TestOptionsWithoutWrapping(t *testing.T) {
 	body := "<p>" + strings.Repeat("word ", 40) + "</p>"
 
-	result, err := textplain.ConvertWithOptions(body, textplain.WithLineLength(0))
+	result, err := textplain.Convert(body, textplain.WithLineLength(0))
 	require.NoError(t, err)
 	assert.NotContains(t, result, "\n")
 }
 
-func TestOptionsMatchesConvert(t *testing.T) {
-	viaConvert, err := textplain.Convert(optionsDoc, textplain.DefaultLineLength)
+func TestOptionsDefaultToTheDefaultLineLength(t *testing.T) {
+	body := "<p>" + strings.Repeat("word ", 40) + "</p>"
+
+	withNone, err := textplain.Convert(body)
 	require.NoError(t, err)
 
-	viaOptions, err := textplain.ConvertWithOptions(optionsDoc)
+	explicit, err := textplain.Convert(body, textplain.WithLineLength(textplain.DefaultLineLength))
 	require.NoError(t, err)
 
-	assert.Equal(t, viaConvert, viaOptions)
+	assert.Equal(t, explicit, withNone)
+
+	for _, line := range strings.Split(withNone, "\n") {
+		assert.LessOrEqual(t, len(line), textplain.DefaultLineLength)
+	}
 }
 
 func TestOptionsFootnotesOnlyWhenLinksExist(t *testing.T) {
-	result, err := textplain.ConvertWithOptions("<p>no links here</p>", textplain.WithLinks(textplain.LinksFootnotes))
+	result, err := textplain.Convert("<p>no links here</p>", textplain.WithLinks(textplain.LinksFootnotes))
 	require.NoError(t, err)
 	assert.Equal(t, "no links here", result)
 }

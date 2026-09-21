@@ -61,8 +61,8 @@ func textNodesOnly(doc string) (string, error) {
 }
 
 var implementations = []implementation{
-	{"textplain", true, func(d string) (string, error) { return textplain.Convert(d, textplain.DefaultLineLength) }},
-	{"textplain_nowrap", false, func(d string) (string, error) { return textplain.Convert(d, 0) }},
+	{"textplain", true, func(d string) (string, error) { return textplain.Convert(d) }},
+	{"textplain_nowrap", false, func(d string) (string, error) { return textplain.Convert(d, textplain.WithLineLength(0)) }},
 	{"jaytaylor", false, func(d string) (string, error) { return jaytaylor.FromString(d) }},
 	{"jaytaylor_pretty", false, func(d string) (string, error) {
 		return jaytaylor.FromString(d, jaytaylor.Options{PrettyTables: true})

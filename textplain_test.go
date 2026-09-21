@@ -308,7 +308,7 @@ func TestHeadings(t *testing.T) {
 }
 
 func TestAppliesLineWrapping(t *testing.T) {
-	txt, err := textplain.Convert(strings.Repeat("test ", 100), 20)
+	txt, err := textplain.Convert(strings.Repeat("test ", 100), textplain.WithLineLength(20))
 	require.NoError(t, err)
 
 	var offendingLines []int
@@ -503,7 +503,7 @@ func TestLinks(t *testing.T) {
 
 // see https://github.com/premailer/premailer/issues/72
 func TestMultipleLinksPerLine(t *testing.T) {
-	plain, err := textplain.Convert(`<p>This is <a href="http://www.google.com" >link1</a> and <a href="http://www.google.com" >link2 </a> is next.</p>`, 10000)
+	plain, err := textplain.Convert(`<p>This is <a href="http://www.google.com" >link1</a> and <a href="http://www.google.com" >link2 </a> is next.</p>`, textplain.WithLineLength(10000))
 	require.NoError(t, err)
 
 	assert.Equal(t, `This is link1 ( http://www.google.com ) and link2 ( http://www.google.com ) is next.`, plain)
@@ -636,13 +636,13 @@ func TestFixSpacing(t *testing.T) {
 func TestMissingBody(t *testing.T) {
 	t.Run("frameset document has no body", func(t *testing.T) {
 		t.Parallel()
-		_, err := textplain.Convert(`<frameset><frame src="a.html"/></frameset>`, textplain.DefaultLineLength)
+		_, err := textplain.Convert(`<frameset><frame src="a.html"/></frameset>`)
 		require.ErrorIs(t, err, textplain.ErrBodyNotFound)
 	})
 
 	t.Run("empty body is not an error", func(t *testing.T) {
 		t.Parallel()
-		result, err := textplain.Convert(`<html><body></body></html>`, textplain.DefaultLineLength)
+		result, err := textplain.Convert(`<html><body></body></html>`)
 		require.NoError(t, err)
 		assert.Empty(t, result)
 	})
@@ -704,7 +704,7 @@ func TestBlockquote(t *testing.T) {
 
 	t.Run("every wrapped line keeps the marker", func(t *testing.T) {
 		t.Parallel()
-		result, err := textplain.Convert("<blockquote><p>"+strings.Repeat("quoted words ", 6)+"</p></blockquote>", 30)
+		result, err := textplain.Convert("<blockquote><p>"+strings.Repeat("quoted words ", 6)+"</p></blockquote>", textplain.WithLineLength(30))
 		require.NoError(t, err)
 
 		for _, line := range strings.Split(result, "\n") {
@@ -729,14 +729,14 @@ func TestHorizontalRule(t *testing.T) {
 
 	t.Run("rule matches the requested line length", func(t *testing.T) {
 		t.Parallel()
-		result, err := textplain.Convert(`<p>a</p><hr/><p>b</p>`, 20)
+		result, err := textplain.Convert(`<p>a</p><hr/><p>b</p>`, textplain.WithLineLength(20))
 		require.NoError(t, err)
 		assert.Equal(t, "a\n\n"+strings.Repeat("-", 20)+"\n\nb", result)
 	})
 
 	t.Run("unwrapped output falls back to the default width", func(t *testing.T) {
 		t.Parallel()
-		result, err := textplain.Convert(`<hr/>`, 0)
+		result, err := textplain.Convert(`<hr/>`, textplain.WithLineLength(0))
 		require.NoError(t, err)
 		assert.Equal(t, strings.Repeat("-", textplain.DefaultLineLength), result)
 	})
@@ -968,7 +968,7 @@ func TestPreformatted(t *testing.T) {
 	t.Run("preformatted text is not wrapped", func(t *testing.T) {
 		t.Parallel()
 		line := "aaaaaaaaaa bbbbbbbbbb cccccccccc dddddddddd"
-		result, err := textplain.Convert("<pre>"+line+"</pre>", 20)
+		result, err := textplain.Convert("<pre>"+line+"</pre>", textplain.WithLineLength(20))
 		require.NoError(t, err)
 		assert.Equal(t, line, result)
 	})

@@ -13,7 +13,7 @@ func runTestCases(t *testing.T, testCases ...testCase) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			result, err := textplain.Convert(tc.body, textplain.DefaultLineLength)
+			result, err := textplain.Convert(tc.body)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expect, result)
 		})
@@ -49,6 +49,6 @@ const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "htt
 func BenchmarkTree(b *testing.B) {
 	converter := textplain.NewTreeConverter()
 	for range b.N {
-		_, _ = converter.Convert(html, textplain.DefaultLineLength)
+		_, _ = converter.Convert(html)
 	}
 }
