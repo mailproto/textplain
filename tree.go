@@ -3,6 +3,7 @@ package textplain
 import (
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -374,88 +375,92 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string) {
 }
 
 func (t *TreeConverter) fixSpacing(rt string) string {
-	runes := []rune(rt)
-
-	if len(runes) < 2 {
+	first, firstSize := utf8.DecodeRuneInString(rt)
+	if firstSize == 0 {
 		return rt
 	}
 
-	processed := make([]rune, 0, len(runes))
-	processed = append(processed, runes[:2]...)
-	idx := 1
-
-	var inList = (processed[0] == '*' && processed[1] == ' ')
-
-tidyLoop:
-	for i := 2; i < len(runes); i++ {
-		v := runes[i]
-
-		switch processed[idx] {
-		case '\n':
-			if v == '\t' || v == ' ' {
-				continue
-			}
-
-			if processed[idx-1] == '\n' && v == '\n' {
-				continue
-			}
-
-			if inList && v == '\n' {
-				// lookahead through any whitespace to make sure we are still in a list
-				for j := i; j < len(runes); j++ {
-					if runes[j] == '\t' || runes[j] == ' ' || runes[j] == '\n' {
-						continue
-					}
-
-					if runes[j] == '*' && j+1 < len(runes) && runes[j+1] == ' ' {
-						continue tidyLoop
-					}
-
-					break
-				}
-			}
-
-			if runes[i-1] == '*' && v == ' ' {
-				inList = true
-			} else {
-				inList = false
-			}
-
-		case ' ':
-			if v == ' ' {
-				continue
-			}
-
-			if v == '\t' || v == '\n' {
-				processed[idx] = '\n'
-
-				continue
-			}
-		}
-
-		// handle whitespace characters being used for preheader blocks to produce a cleaner plaintext output
-		switch v {
-		case '\u034f', '\u00ad', '\u2007':
-		whitespaceLoop:
-			for j := i; j < len(runes); j++ {
-				switch runes[j] {
-				case ' ':
-					continue
-				case '\u034f', '\u00ad', '\u2007':
-					i = j
-
-					continue tidyLoop
-				default:
-					break whitespaceLoop
-				}
-			}
-		}
-
-		processed = append(processed, v)
-		idx++
+	second, secondSize := utf8.DecodeRuneInString(rt[firstSize:])
+	if secondSize == 0 {
+		return rt
 	}
 
-	return string(processed)
+	var out strings.Builder
+
+	out.Grow(len(rt))
+	out.WriteRune(first)
+
+	// out holds everything already settled; last is held back because a run of
+	// spaces can still turn it into a newline, and beforeLast is only read
+	var (
+		beforeLast = first
+		last       = second
+		previous   = second
+		inList     = first == '*' && second == ' '
+	)
+
+	for i := firstSize + secondSize; i < len(rt); {
+		v, size := utf8.DecodeRuneInString(rt[i:])
+		keep := true
+
+		switch {
+		case last == '\n' && (v == '\t' || v == ' '):
+			keep = false
+		case last == '\n' && beforeLast == '\n' && v == '\n':
+			keep = false
+		case last == '\n' && inList && v == '\n' && stillInList(rt[i:]):
+			keep = false
+		case last == '\n':
+			inList = previous == '*' && v == ' '
+		case last == ' ' && v == ' ':
+			keep = false
+		case last == ' ' && (v == '\t' || v == '\n'):
+			last = '\n'
+			keep = false
+		}
+
+		// whitespace characters used for preheader blocks produce a cleaner
+		// plaintext output when dropped
+		if keep && isPreheaderMark(v) {
+			previous = v
+			i += size
+
+			continue
+		}
+
+		if keep {
+			out.WriteRune(last)
+
+			beforeLast, last = last, v
+		}
+
+		previous = v
+		i += size
+	}
+
+	out.WriteRune(last)
+
+	return out.String()
+}
+
+func isPreheaderMark(r rune) bool {
+	return r == '\u034f' || r == '\u00ad' || r == '\u2007'
+}
+
+// stillInList reports whether the next non-whitespace thing is another bullet
+func stillInList(s string) bool {
+	for j := 0; j < len(s); {
+		r, size := utf8.DecodeRuneInString(s[j:])
+		if r == '\t' || r == ' ' || r == '\n' {
+			j += size
+
+			continue
+		}
+
+		return r == '*' && strings.HasPrefix(s[j+size:], " ")
+	}
+
+	return false
 }
 
 // isHidden reports whether an element is kept out of the rendered message.
