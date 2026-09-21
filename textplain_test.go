@@ -887,3 +887,43 @@ func TestNonContentElements(t *testing.T) {
 		},
 	)
 }
+
+func TestNestedLists(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "nested list breaks from the item text and indents",
+			body:   `<ul><li>top<ul><li>child</li><li>child2</li></ul></li><li>top2</li></ul>`,
+			expect: "* top\n  * child\n  * child2\n* top2",
+		},
+		testCase{
+			name:   "each level numbers from its own start",
+			body:   `<ol><li>one<ol><li>inner</li></ol></li><li>two</li></ol>`,
+			expect: "1. one\n  1. inner\n2. two",
+		},
+		testCase{
+			name:   "indentation deepens with each level",
+			body:   `<ul><li>a<ul><li>b<ul><li>c</li></ul></li></ul></li></ul>`,
+			expect: "* a\n  * b\n    * c",
+		},
+		testCase{
+			name:   "list types may alternate",
+			body:   `<ul><li>mixed<ol><li>num</li></ol></li></ul>`,
+			expect: "* mixed\n  1. num",
+		},
+		testCase{
+			name:   "a nested list reached through a div still indents",
+			body:   `<ul><li>item<div><ul><li>via div</li></ul></div></li></ul>`,
+			expect: "* item\n  * via div",
+		},
+		testCase{
+			name:   "sibling lists are not indented under each other",
+			body:   `<ol><li>one</li></ol><ol><li>fresh</li></ol>`,
+			expect: "1. one\n1. fresh",
+		},
+		testCase{
+			name:   "indentation survives inside a quote",
+			body:   `<blockquote><ul><li>top<ul><li>child</li></ul></li></ul></blockquote><p>after</p>`,
+			expect: "> * top\n>   * child\n\nafter",
+		},
+	)
+}

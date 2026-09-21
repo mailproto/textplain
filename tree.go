@@ -8,10 +8,20 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+// Markers stand in for things that cannot be settled until spacing and
+// wrapping have run. The parser never emits control characters, so none of
+// these can collide with content. Allocated in order; take the next free value
+// when adding another.
 const (
+	// horizontalRule is drawn once Convert knows the line length
+	horizontalRule = "\x00"
+
+	// a blockquote's extent, turned into line prefixes after wrapping
 	quoteOpen  = "\x01"
 	quoteClose = "\x02"
-	horizontalRule = "\x00"
+
+	// one level of list nesting, since fixSpacing strips leading whitespace
+	indentMark = "\x03"
 )
 
 type TreeConverter struct{}
@@ -46,7 +56,7 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
 	wrapped = strings.ReplaceAll(wrapped, "\n)", " )\n") // XXX: cheap fix for wrapping closed braces. move into WordWrap
 
-	return applyQuotes(wrapped), nil
+	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")), nil
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
@@ -117,10 +127,12 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				continue
 			case atom.Ul:
+				parts = append(parts, nestedListBreak(n)...)
 				parts = append(parts, t.listItems(c, unordered)...)
 
 				continue
 			case atom.Ol:
+				parts = append(parts, nestedListBreak(n)...)
 				parts = append(parts, t.listItems(c, ordered)...)
 
 				continue
@@ -337,8 +349,40 @@ func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []str
 	return parts
 }
 
+// nestedListBreak starts a list nested in an item on its own line, so that it
+// does not run into the item's text. listItem relies on that break to tell the
+// two apart.
+func nestedListBreak(parent *html.Node) []string {
+	if parent != nil && parent.DataAtom == atom.Li {
+		return []string{"\n"}
+	}
+
+	return nil
+}
+
 func (t *TreeConverter) listItem(n *html.Node, prefix string) string {
-	return strings.TrimSpace(prefix+strings.Join(t.doConvert(n), "")) + "\n"
+	content := strings.Trim(strings.Join(t.doConvert(n), ""), "\n")
+
+	// everything after the first line came from a nested list and belongs one
+	// level further in; marks already present deepen as they bubble up
+	first, nested, _ := strings.Cut(content, "\n")
+
+	var out strings.Builder
+
+	out.WriteString(strings.TrimSpace(prefix + first))
+	out.WriteString("\n")
+
+	for line := range strings.SplitSeq(nested, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		out.WriteString(indentMark)
+		out.WriteString(strings.TrimLeft(line, " \t"))
+		out.WriteString("\n")
+	}
+
+	return out.String()
 }
 
 func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string) {
