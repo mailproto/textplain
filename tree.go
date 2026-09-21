@@ -1,6 +1,7 @@
 package textplain
 
 import (
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -92,7 +93,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				continue
 			case atom.Ol:
-				parts = append(parts, t.listItems(c, unordered)...) // XXX: change to ordered
+				parts = append(parts, t.listItems(c, ordered)...)
 
 				continue
 			case atom.Li:
@@ -155,9 +156,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				text := strings.TrimSpace(strings.Join(more, ""))
 				if text == "" {
-					if alt := getAttr(c, "alt"); alt != "" {
-						text = strings.TrimSpace(text)
-					}
+					text = strings.TrimSpace(getAttr(c, "alt"))
 				}
 
 				href = strings.TrimPrefix(href, "mailto:")
@@ -220,7 +219,9 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 	return append(block, headerText, "\n", delimiter, "\n\n")
 }
 
-func unordered(idx int) string { return "* " }
+func unordered(int) string { return "* " }
+
+func ordered(idx int) string { return strconv.Itoa(idx) + ". " }
 
 func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []string {
 	var (
@@ -303,14 +304,15 @@ tidyLoop:
 			if inList && v == '\n' {
 				// lookahead through any whitespace to make sure we are still in a list
 				for j := i; j < len(runes); j++ {
-					switch runes[j] {
-					case '\t', ' ', '\n':
+					if runes[j] == '\t' || runes[j] == ' ' || runes[j] == '\n' {
 						continue
-					case '*':
-						if j+1 < len(runes) && runes[j+1] == ' ' {
-							continue tidyLoop
-						}
 					}
+
+					if runes[j] == '*' && j+1 < len(runes) && runes[j+1] == ' ' {
+						continue tidyLoop
+					}
+
+					break
 				}
 			}
 
