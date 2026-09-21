@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	quoteOpen  = "\x01"
-	quoteClose = "\x02"
+	quoteOpen      = "\x01"
+	quoteClose     = "\x02"
 	horizontalRule = "\x00"
 )
 
