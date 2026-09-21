@@ -16,31 +16,44 @@ func WordWrap(txt string, lineLength int) string {
 	var final []string
 
 	for line := range strings.SplitSeq(txt, "\n") {
+		// lineLength counts characters, so index by rune rather than by byte
+		runes := []rune(line)
+
 		var startIndex, endIndex int
-		for (len(line)-endIndex) > lineLength && startIndex < len(line) {
+		for (len(runes)-endIndex) > lineLength && startIndex < len(runes) {
 			endIndex += lineLength
-			if endIndex >= len(line) {
-				endIndex = len(line) - 1
+			if endIndex >= len(runes) {
+				endIndex = len(runes) - 1
 			} else if endIndex < startIndex {
 				endIndex = startIndex
 			}
 
-			newIndex := strings.LastIndex(line[startIndex:endIndex+1], " ")
+			newIndex := lastSpace(runes[startIndex : endIndex+1])
 			if newIndex <= 0 {
 				continue
 			}
 
-			final = append(final, line[startIndex:startIndex+newIndex])
+			final = append(final, string(runes[startIndex:startIndex+newIndex]))
 			startIndex += newIndex
 			endIndex = startIndex
 
 			// clear any extra space
-			for ; startIndex < len(line) && line[startIndex] == ' '; startIndex++ {
+			for ; startIndex < len(runes) && runes[startIndex] == ' '; startIndex++ {
 			}
 		}
 
-		final = append(final, line[startIndex:])
+		final = append(final, string(runes[startIndex:]))
 	}
 
 	return strings.Join(final, "\n")
+}
+
+func lastSpace(runes []rune) int {
+	for i := len(runes) - 1; i >= 0; i-- {
+		if runes[i] == ' ' {
+			return i
+		}
+	}
+
+	return -1
 }

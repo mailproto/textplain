@@ -36,3 +36,27 @@ func TestWrappingShorterThanLimit(t *testing.T) {
 	wrapped := textplain.WordWrap(body, 3)
 	assert.Equal(t, "1\n12\n12\n1", wrapped)
 }
+
+func TestWrappingCountsRunesNotBytes(t *testing.T) {
+	// same shape, one ASCII and one multi-byte: both must wrap identically
+	ascii := strings.Repeat("ab ", 10)
+	accented := strings.Repeat("\u00e1b ", 10)
+
+	assert.Equal(t, runeWidths(textplain.WordWrap(ascii, 20)), runeWidths(textplain.WordWrap(accented, 20)))
+	assert.Equal(t, "\u00e1b \u00e1b \u00e1b \u00e1b \u00e1b \u00e1b \u00e1b\n\u00e1b \u00e1b \u00e1b ", textplain.WordWrap(accented, 20))
+}
+
+func TestWrappingMultibyteWithoutBreakpoints(t *testing.T) {
+	unbroken := strings.Repeat("\u00e9", 40)
+
+	assert.Equal(t, unbroken, textplain.WordWrap(unbroken, 10))
+}
+
+func runeWidths(s string) []int {
+	var widths []int
+	for _, line := range strings.Split(s, "\n") {
+		widths = append(widths, len([]rune(line)))
+	}
+
+	return widths
+}
