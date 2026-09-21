@@ -190,6 +190,16 @@ func TestLists(t *testing.T) {
 			body:   "<p>hello</p>\n\n\n<ul><li>item 1</li><li>item 2</li><li>item 3</li></ul>\n\n<p>hi</p>",
 			expect: "hello\n\n* item 1\n* item 2\n* item 3\n\nhi",
 		},
+		testCase{
+			name:   "paragraph after a list keeps its blank line",
+			body:   "<ul><li>one</li></ul><br/><p>prose</p>",
+			expect: "* one\n\nprose",
+		},
+		testCase{
+			name:   "a later list does not close the gap after an earlier one",
+			body:   "<ul><li>one</li></ul><br/><p>prose</p><ul><li>two</li></ul>",
+			expect: "* one\n\nprose\n\n* two",
+		},
 	)
 }
 

@@ -294,14 +294,15 @@ tidyLoop:
 			if inList && v == '\n' {
 				// lookahead through any whitespace to make sure we are still in a list
 				for j := i; j < len(runes); j++ {
-					switch runes[j] {
-					case '\t', ' ', '\n':
+					if runes[j] == '\t' || runes[j] == ' ' || runes[j] == '\n' {
 						continue
-					case '*':
-						if j+1 < len(runes) && runes[j+1] == ' ' {
-							continue tidyLoop
-						}
 					}
+
+					if runes[j] == '*' && j+1 < len(runes) && runes[j+1] == ' ' {
+						continue tidyLoop
+					}
+
+					break
 				}
 			}
 
