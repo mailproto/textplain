@@ -21,15 +21,10 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 
 	body := t.findBody(root)
 	if body == nil {
-		return "", nil
+		return "", ErrBodyNotFound
 	}
 
-	lines, err := t.doConvert(body)
-	if err != nil {
-		return "", err
-	}
-
-	text := t.fixSpacing(strings.Join(lines, ""))
+	text := t.fixSpacing(strings.Join(t.doConvert(body), ""))
 
 	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
 	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
@@ -39,11 +34,11 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 }
 
 func (t *TreeConverter) findBody(n *html.Node) *html.Node {
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if n.Type == html.ElementNode && n.DataAtom == atom.Body {
-			return n
-		}
+	if n.Type == html.ElementNode && n.DataAtom == atom.Body {
+		return n
+	}
 
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if body := t.findBody(c); body != nil {
 			return body
 		}
@@ -52,9 +47,9 @@ func (t *TreeConverter) findBody(n *html.Node) *html.Node {
 	return nil
 }
 
-func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
+func (t *TreeConverter) doConvert(n *html.Node) []string {
 	if n == nil {
-		return nil, nil
+		return nil
 	}
 
 	var parts []string
@@ -80,10 +75,7 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 			case atom.Script, atom.Style:
 				continue
 			case atom.P, atom.Div:
-				more, err := t.doConvert(c)
-				if err != nil {
-					return nil, err
-				}
+				more := t.doConvert(c)
 
 				if len(parts) > 0 {
 					if p := strings.Trim(parts[len(parts)-1], " \t"); len(p) == 0 || p[len(p)-1] != '\n' {
@@ -96,47 +88,26 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 
 				continue
 			case atom.Ul:
-				li, err := t.listItems(c, unordered)
-				if err != nil {
-					return nil, err
-				}
-
-				parts = append(parts, li...)
+				parts = append(parts, t.listItems(c, unordered)...)
 
 				continue
 			case atom.Ol:
-				li, err := t.listItems(c, unordered) // XXX: change to ordered
-				if err != nil {
-					return nil, err
-				}
-
-				parts = append(parts, li...)
+				parts = append(parts, t.listItems(c, unordered)...) // XXX: change to ordered
 
 				continue
 			case atom.Li:
-				item, err := t.listItem(c, "* ")
-				if err != nil {
-					return nil, err
-				}
-
-				parts = append(parts, item)
+				parts = append(parts, t.listItem(c, "* "))
 
 				continue
 			case atom.Span:
-				var (
-					more []string
-					err  error
-				)
+				var more []string
 
-				c, more, err = t.wrapSpans(c)
-				if err != nil {
-					return nil, err
-				}
+				c, more = t.wrapSpans(c)
 
 				parts = append(parts, more...)
 
 				if c == nil {
-					return parts, nil
+					return parts
 				}
 
 				continue
@@ -145,43 +116,25 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 
 				continue
 			case atom.H1:
-				more, err := t.headerBlock(c, "*", true)
-				if err != nil {
-					return nil, err
-				}
-
-				parts = append(parts, more...)
+				parts = append(parts, t.headerBlock(c, "*", true)...)
 
 				continue
 			case atom.H2:
-				more, err := t.headerBlock(c, "-", true)
-				if err != nil {
-					return nil, err
-				}
-
-				parts = append(parts, more...)
+				parts = append(parts, t.headerBlock(c, "-", true)...)
 
 				continue
 			case atom.H3, atom.H4, atom.H5, atom.H6:
-				more, err := t.headerBlock(c, "-", false)
-				if err != nil {
-					return nil, err
-				}
-
-				parts = append(parts, more...)
+				parts = append(parts, t.headerBlock(c, "-", false)...)
 
 				continue
-			case atom.Img, atom.Image:
+			case atom.Img:
 				if alt := getAttr(c, "alt"); alt != "" {
 					parts = append(parts, strings.TrimSpace(alt))
 				}
 
 				continue
 			case atom.A:
-				more, err := t.doConvert(c)
-				if err != nil {
-					return nil, err
-				}
+				more := t.doConvert(c)
 
 				href := getAttr(c, "href")
 				if href == "" {
@@ -217,20 +170,15 @@ func (t *TreeConverter) doConvert(n *html.Node) ([]string, error) {
 			}
 		}
 
-		more, err := t.doConvert(c)
-		if err != nil {
-			return nil, err
-		}
-
-		parts = append(parts, more...)
+		parts = append(parts, t.doConvert(c)...)
 	}
 
-	return parts, nil
+	return parts
 }
 
 func containsImg(n *html.Node) bool {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if c.DataAtom == atom.Img || c.DataAtom == atom.Image {
+		if c.DataAtom == atom.Img {
 			return true
 		}
 
@@ -242,13 +190,8 @@ func containsImg(n *html.Node) bool {
 	return false
 }
 
-func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool) ([]string, error) {
-	content, err := t.doConvert(n)
-	if err != nil {
-		return nil, err
-	}
-
-	headerText := strings.TrimSpace(strings.Join(content, ""))
+func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool) []string {
+	headerText := strings.TrimSpace(strings.Join(t.doConvert(n), ""))
 
 	var maxSize int
 	for line := range strings.SplitSeq(headerText, "\n") {
@@ -264,12 +207,12 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 		block = append(block, delimiter, "\n")
 	}
 
-	return append(block, headerText, "\n", delimiter, "\n\n"), nil
+	return append(block, headerText, "\n", delimiter, "\n\n")
 }
 
 func unordered(idx int) string { return "* " }
 
-func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) ([]string, error) {
+func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []string {
 	var (
 		parts []string
 		idx   = 1
@@ -278,56 +221,34 @@ func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) ([]st
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		switch c.DataAtom {
 		case atom.Li:
-			prefix := prefixer(idx)
+			parts = append(parts, t.listItem(c, prefixer(idx)))
 			idx++
-
-			item, err := t.listItem(c, prefix)
-			if err != nil {
-				return nil, err
-			}
-
-			parts = append(parts, item)
 		default:
-			contents, err := t.doConvert(c)
-			if err != nil {
-				return nil, err
-			}
-
-			parts = append(parts, contents...)
+			parts = append(parts, t.doConvert(c)...)
 		}
 	}
 
-	return parts, nil
+	return parts
 }
 
-func (t *TreeConverter) listItem(n *html.Node, prefix string) (string, error) {
-	contents, err := t.doConvert(n)
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(prefix+strings.Join(contents, "")) + "\n", nil
+func (t *TreeConverter) listItem(n *html.Node, prefix string) string {
+	return strings.TrimSpace(prefix+strings.Join(t.doConvert(n), "")) + "\n"
 }
 
-func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
+func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string) {
 	var parts []string
 
 	var c *html.Node
 	for c = n; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && c.DataAtom != atom.Span {
-			return c.PrevSibling, parts, nil
+			return c.PrevSibling, parts
 		}
 
 		var span string
 
 		switch c.Type {
 		case html.ElementNode:
-			children, err := t.doConvert(c)
-			if err != nil {
-				return c, nil, err
-			}
-
-			span = strings.Join(children, "")
+			span = strings.Join(t.doConvert(c), "")
 		case html.TextNode:
 			span = c.Data
 		}
@@ -339,7 +260,7 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string, error) {
 		parts = append(parts, span)
 	}
 
-	return c, parts, nil
+	return c, parts
 }
 
 func (t *TreeConverter) fixSpacing(rt string) string {
