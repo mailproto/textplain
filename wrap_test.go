@@ -3,6 +3,7 @@ package textplain_test
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/mailproto/textplain"
 	"github.com/stretchr/testify/assert"
@@ -35,4 +36,58 @@ func TestWrappingShorterThanLimit(t *testing.T) {
 
 	wrapped := textplain.WordWrap(body, 3)
 	assert.Equal(t, "1\n12\n12\n1", wrapped)
+}
+
+func TestWrappingCountsRunesNotBytes(t *testing.T) {
+	// same shape, one ASCII and one multi-byte: both must wrap identically
+	ascii := strings.Repeat("ab ", 10)
+	accented := strings.Repeat("\u00e1b ", 10)
+
+	assert.Equal(t, runeWidths(textplain.WordWrap(ascii, 20)), runeWidths(textplain.WordWrap(accented, 20)))
+	assert.Equal(t, "\u00e1b \u00e1b \u00e1b \u00e1b \u00e1b \u00e1b \u00e1b\n\u00e1b \u00e1b \u00e1b ", textplain.WordWrap(accented, 20))
+}
+
+func TestWrappingMultibyteWithoutBreakpoints(t *testing.T) {
+	unbroken := strings.Repeat("\u00e9", 40)
+
+	assert.Equal(t, unbroken, textplain.WordWrap(unbroken, 10))
+}
+
+func runeWidths(s string) []int {
+	var widths []int
+	for _, line := range strings.Split(s, "\n") {
+		widths = append(widths, len([]rune(line)))
+	}
+
+	return widths
+}
+
+func FuzzWordWrap(f *testing.F) {
+	for _, seed := range []string{"", " ", "hello world", "a  b   c", "1 23 45\n67\n1234567890 1   ", "áb áb áb", "日本語 の テキスト", strings.Repeat("é", 40)} {
+		for _, width := range []int{-1, 0, 1, 5, 20} {
+			f.Add(seed, width)
+		}
+	}
+
+	f.Fuzz(func(t *testing.T, txt string, lineLength int) {
+		if !utf8.ValidString(txt) {
+			return
+		}
+
+		wrapped := textplain.WordWrap(txt, lineLength)
+
+		assert.True(t, utf8.ValidString(wrapped), "wrapped output is not valid utf-8")
+		// wrapping only ever breaks at spaces, so no other character may be lost or moved
+		assert.Equal(t, stripWhitespace(txt), stripWhitespace(wrapped))
+	})
+}
+
+func stripWhitespace(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r == ' ' || r == '\n' {
+			return -1
+		}
+
+		return r
+	}, s)
 }
