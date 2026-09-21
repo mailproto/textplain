@@ -642,3 +642,23 @@ func TestTables(t *testing.T) {
 		},
 	)
 }
+
+func TestDefinitionLists(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "terms and definitions each get a line",
+			body:   `<dl><dt>Term</dt><dd>Definition</dd><dt>T2</dt><dd>D2</dd></dl>`,
+			expect: "Term\nDefinition\nT2\nD2",
+		},
+		testCase{
+			name:   "a term may have several definitions",
+			body:   `<dl><dt>Term</dt><dd>One</dd><dd>Two</dd></dl>`,
+			expect: "Term\nOne\nTwo",
+		},
+		testCase{
+			name:   "definitions keep their own markup",
+			body:   `<dl><dt>Term</dt><dd><a href="http://example.com">link</a></dd></dl>`,
+			expect: "Term\nlink ( http://example.com )",
+		},
+	)
+}
