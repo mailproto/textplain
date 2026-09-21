@@ -10,10 +10,9 @@ import (
 )
 
 type testCase struct {
-	name       string
-	body       string
-	expect     string
-	skipRegexp bool
+	name   string
+	body   string
+	expect string
 }
 
 func TestConvert(t *testing.T) {
@@ -72,10 +71,9 @@ func TestStrippingWhitespace(t *testing.T) {
 			expect: "test text",
 		},
 		testCase{
-			name:       "preheader block",
-			body:       "test text &#8199;&#847; &#8199;&#847; &#8199;&#847; &shy; &shy; &shy;\n\nhello",
-			expect:     "test text\n\nhello",
-			skipRegexp: true,
+			name:   "preheader block",
+			body:   "test text &#8199;&#847; &#8199;&#847; &#8199;&#847; &shy; &shy; &shy;\n\nhello",
+			expect: "test text\n\nhello",
 		},
 		testCase{
 			name:   "infix repeated space",
@@ -557,5 +555,20 @@ func TestFixSpacing(t *testing.T) {
 		name:   "ends in *",
 		body:   "<p>hello</p>*",
 		expect: "hello\n\n*",
+	})
+}
+
+func TestMissingBody(t *testing.T) {
+	t.Run("frameset document has no body", func(t *testing.T) {
+		t.Parallel()
+		_, err := textplain.Convert(`<frameset><frame src="a.html"/></frameset>`, textplain.DefaultLineLength)
+		require.ErrorIs(t, err, textplain.ErrBodyNotFound)
+	})
+
+	t.Run("empty body is not an error", func(t *testing.T) {
+		t.Parallel()
+		result, err := textplain.Convert(`<html><body></body></html>`, textplain.DefaultLineLength)
+		require.NoError(t, err)
+		assert.Empty(t, result)
 	})
 }
