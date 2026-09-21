@@ -8,6 +8,10 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+// horizontalRule stands in for an hr until Convert knows the line length to
+// draw it at. The parser never emits NUL, so it cannot collide with content.
+const horizontalRule = "\x00"
+
 type TreeConverter struct{}
 
 func NewTreeConverter() Converter {
@@ -26,6 +30,15 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 	}
 
 	text := t.fixSpacing(strings.Join(t.doConvert(body), ""))
+
+	if strings.Contains(text, horizontalRule) {
+		width := lineLength
+		if width <= 0 {
+			width = DefaultLineLength
+		}
+
+		text = strings.ReplaceAll(text, horizontalRule, strings.Repeat("-", width))
+	}
 
 	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
 	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
@@ -124,6 +137,10 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 				continue
 			case atom.Br:
 				parts = append(parts, "\n")
+
+				continue
+			case atom.Hr:
+				parts = append(parts, "\n\n", horizontalRule, "\n\n")
 
 				continue
 			case atom.H1:

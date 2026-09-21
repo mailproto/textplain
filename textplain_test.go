@@ -642,3 +642,32 @@ func TestTables(t *testing.T) {
 		},
 	)
 }
+
+func TestHorizontalRule(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "rule between paragraphs",
+			body:   `<p>a</p><hr/><p>b</p>`,
+			expect: "a\n\n" + strings.Repeat("-", textplain.DefaultLineLength) + "\n\nb",
+		},
+		testCase{
+			name:   "consecutive rules are kept",
+			body:   `<p>a</p><hr/><hr/><p>b</p>`,
+			expect: "a\n\n" + strings.Repeat("-", textplain.DefaultLineLength) + "\n\n" + strings.Repeat("-", textplain.DefaultLineLength) + "\n\nb",
+		},
+	)
+
+	t.Run("rule matches the requested line length", func(t *testing.T) {
+		t.Parallel()
+		result, err := textplain.Convert(`<p>a</p><hr/><p>b</p>`, 20)
+		require.NoError(t, err)
+		assert.Equal(t, "a\n\n"+strings.Repeat("-", 20)+"\n\nb", result)
+	})
+
+	t.Run("unwrapped output falls back to the default width", func(t *testing.T) {
+		t.Parallel()
+		result, err := textplain.Convert(`<hr/>`, 0)
+		require.NoError(t, err)
+		assert.Equal(t, strings.Repeat("-", textplain.DefaultLineLength), result)
+	})
+}
