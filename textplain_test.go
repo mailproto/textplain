@@ -677,3 +677,48 @@ func TestTables(t *testing.T) {
 		},
 	)
 }
+
+func TestNonContentElements(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "select options are not document text",
+			body:   `<p>a</p><select><option>opt1</option><option>opt2</option></select>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "textarea holds a value, not text",
+			body:   `<p>a</p><textarea>editable</textarea>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "iframe fallback is ignored",
+			body:   `<p>a</p><iframe src="x.html">fallback</iframe>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "svg title is metadata",
+			body:   `<p>a</p><svg><title>icon</title></svg>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "media fallback is ignored",
+			body:   `<p>a</p><video src="v.mp4">no video support</video>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "template contents are inert",
+			body:   `<p>a</p><template><p>inert</p></template>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "noscript is kept, since scripts never run here",
+			body:   `<p>a</p><noscript>shown when scripts are off</noscript>`,
+			expect: "a\n\nshown when scripts are off",
+		},
+		testCase{
+			name:   "button labels are visible text",
+			body:   `<p>a</p><button>Confirm your email</button>`,
+			expect: "a\n\nConfirm your email",
+		},
+	)
+}
