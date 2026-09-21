@@ -7,10 +7,6 @@ const (
 	DefaultLineLength = 65
 )
 
-type Converter interface {
-	Convert(string, ...Option) (string, error)
-}
-
 var defaultConverter = NewTreeConverter()
 
 // Convert is a wrapper around the default converter singleton.
