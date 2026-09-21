@@ -113,6 +113,10 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 				parts = append(parts, t.listItem(c, "* "))
 
 				continue
+			case atom.Dt, atom.Dd:
+				parts = append(parts, t.listItem(c, ""))
+
+				continue
 			case atom.Td, atom.Th:
 				parts = append(parts, t.doConvert(c)...)
 				parts = append(parts, " ")
