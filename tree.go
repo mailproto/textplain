@@ -39,7 +39,7 @@ type conversion struct {
 	links []string
 }
 
-func NewTreeConverter() Converter {
+func NewTreeConverter() *TreeConverter {
 	return &TreeConverter{}
 }
 
