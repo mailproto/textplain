@@ -146,9 +146,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				text := strings.TrimSpace(strings.Join(more, ""))
 				if text == "" {
-					if alt := getAttr(c, "alt"); alt != "" {
-						text = strings.TrimSpace(text)
-					}
+					text = strings.TrimSpace(getAttr(c, "alt"))
 				}
 
 				href = strings.TrimPrefix(href, "mailto:")

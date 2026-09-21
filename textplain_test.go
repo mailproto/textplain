@@ -433,6 +433,26 @@ func TestLinks(t *testing.T) {
 			body:   `<a href="http://example.com"><img src="https://images.com/image.png" /></a>`,
 			expect: `( http://example.com )`,
 		},
+		testCase{
+			name:   "empty link falls back to alt",
+			body:   `<a href="http://example.com" alt="Example"></a>`,
+			expect: `Example ( http://example.com )`,
+		},
+		testCase{
+			name:   "link alt labels an image with no alt of its own",
+			body:   `<a href="http://example.com" alt="Example"><img src="https://images.com/image.png" /></a>`,
+			expect: `Example ( http://example.com )`,
+		},
+		testCase{
+			name:   "image alt takes precedence over link alt",
+			body:   `<a href="http://example.com" alt="Link"><img alt="Image" src="https://images.com/image.png" /></a>`,
+			expect: `Image ( http://example.com )`,
+		},
+		testCase{
+			name:   "alt matching href is not repeated",
+			body:   `<a href="http://example.com" alt="http://example.com"></a>`,
+			expect: `http://example.com`,
+		},
 	)
 }
 
