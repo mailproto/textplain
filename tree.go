@@ -223,10 +223,19 @@ func unordered(int) string { return "* " }
 
 func ordered(idx int) string { return strconv.Itoa(idx) + ". " }
 
+// listStart reads the start attribute of an ol, which may be negative
+func listStart(n *html.Node) int {
+	if start, err := strconv.Atoi(strings.TrimSpace(getAttr(n, "start"))); err == nil {
+		return start
+	}
+
+	return 1
+}
+
 func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []string {
 	var (
 		parts []string
-		idx   = 1
+		idx   = listStart(n)
 	)
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {

@@ -176,6 +176,26 @@ func TestLists(t *testing.T) {
 			expect: "1. one\n2. two\n1. fresh",
 		},
 		testCase{
+			name:   "<ol start> seeds the numbering",
+			body:   `<ol start="5"><li>a</li><li>b</li></ol>`,
+			expect: "5. a\n6. b",
+		},
+		testCase{
+			name:   "<ol start> may be negative",
+			body:   `<ol start="-1"><li>a</li><li>b</li></ol>`,
+			expect: "-1. a\n0. b",
+		},
+		testCase{
+			name:   "unparseable <ol start> falls back to one",
+			body:   `<ol start="abc"><li>a</li><li>b</li></ol>`,
+			expect: "1. a\n2. b",
+		},
+		testCase{
+			name:   "start on <ul> is ignored",
+			body:   `<ul start="5"><li>a</li><li>b</li></ul>`,
+			expect: "* a\n* b",
+		},
+		testCase{
 			name:   "list items with <ul> and infix whitespace",
 			body:   "<ul><li>item 1</li>  \t\n\t <li>item 2</li><li>item 3</li></ul>",
 			expect: "* item 1\n* item 2\n* item 3",
