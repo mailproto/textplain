@@ -463,6 +463,21 @@ func TestLinks(t *testing.T) {
 			body:   `<a href="http://example.com" alt="http://example.com"></a>`,
 			expect: `http://example.com`,
 		},
+		testCase{
+			name:   "fragment only link keeps just its text",
+			body:   `<a href="#section">Jump</a>`,
+			expect: `Jump`,
+		},
+		testCase{
+			name:   "bare fragment link keeps just its text",
+			body:   `<a href="#">Top</a>`,
+			expect: `Top`,
+		},
+		testCase{
+			name:   "a fragment on a real url is still a link",
+			body:   `<a href="http://example.com/page#frag">Deep</a>`,
+			expect: `Deep ( http://example.com/page#frag )`,
+		},
 	)
 }
 
