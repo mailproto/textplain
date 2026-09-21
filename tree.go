@@ -32,27 +32,40 @@ const (
 
 type TreeConverter struct{}
 
+// conversion holds the state of a single Convert call. TreeConverter is shared,
+// so nothing that varies per document may live on it.
+type conversion struct {
+	opts  options
+	links []string
+}
+
 func NewTreeConverter() Converter {
 	return &TreeConverter{}
 }
 
 func (t *TreeConverter) Convert(document string, lineLength int) (string, error) {
+	return t.ConvertWithOptions(document, WithLineLength(lineLength))
+}
+
+func (t *TreeConverter) ConvertWithOptions(document string, opts ...Option) (string, error) {
 	root, err := html.Parse(strings.NewReader(document))
 	if err != nil {
 		return "", err
 	}
 
-	body := t.findBody(root)
+	cv := &conversion{opts: newOptions(opts)}
+
+	body := cv.findBody(root)
 	if body == nil {
 		return "", ErrBodyNotFound
 	}
 
-	preformatted, text := extractPre(strings.Join(t.doConvert(body), ""))
+	preformatted, text := extractPre(strings.Join(cv.doConvert(body), ""))
 
-	text = t.fixSpacing(text)
+	text = cv.fixSpacing(text)
 
 	if strings.Contains(text, horizontalRule) {
-		width := lineLength
+		width := cv.opts.lineLength
 		if width <= 0 {
 			width = DefaultLineLength
 		}
@@ -60,7 +73,7 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 		text = strings.ReplaceAll(text, horizontalRule, strings.Repeat("-", width))
 	}
 
-	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
+	wrapped := WordWrap(strings.TrimSpace(text), cv.opts.lineLength)
 	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
 	wrapped = strings.ReplaceAll(wrapped, "\n)", " )\n") // XXX: cheap fix for wrapping closed braces. move into WordWrap
 
@@ -68,16 +81,40 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 		wrapped = strings.Replace(wrapped, prePlaceholder, block, 1)
 	}
 
-	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")), nil
+	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")) + cv.footnotes(), nil
 }
 
-func (t *TreeConverter) findBody(n *html.Node) *html.Node {
+// footnotes lists the collected link targets under the body
+func (cv *conversion) footnotes() string {
+	if len(cv.links) == 0 {
+		return ""
+	}
+
+	var out strings.Builder
+
+	out.WriteString("\n\n")
+
+	for i, href := range cv.links {
+		out.WriteString("[")
+		out.WriteString(strconv.Itoa(i + 1))
+		out.WriteString("] ")
+		out.WriteString(href)
+
+		if i < len(cv.links)-1 {
+			out.WriteString("\n")
+		}
+	}
+
+	return out.String()
+}
+
+func (cv *conversion) findBody(n *html.Node) *html.Node {
 	if n.Type == html.ElementNode && n.DataAtom == atom.Body {
 		return n
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if body := t.findBody(c); body != nil {
+		if body := cv.findBody(c); body != nil {
 			return body
 		}
 	}
@@ -85,7 +122,7 @@ func (t *TreeConverter) findBody(n *html.Node) *html.Node {
 	return nil
 }
 
-func (t *TreeConverter) doConvert(n *html.Node) []string {
+func (cv *conversion) doConvert(n *html.Node) []string {
 	if n == nil {
 		return nil
 	}
@@ -126,7 +163,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 			switch c.DataAtom {
 			case atom.P, atom.Div:
-				more := t.doConvert(c)
+				more := cv.doConvert(c)
 
 				if len(parts) > 0 {
 					if p := strings.Trim(parts[len(parts)-1], " \t"); len(p) == 0 || p[len(p)-1] != '\n' {
@@ -140,36 +177,36 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 				continue
 			case atom.Ul:
 				parts = append(parts, nestedListBreak(n)...)
-				parts = append(parts, t.listItems(c, unordered)...)
+				parts = append(parts, cv.listItems(c, cv.unordered)...)
 
 				continue
 			case atom.Ol:
 				parts = append(parts, nestedListBreak(n)...)
-				parts = append(parts, t.listItems(c, ordered)...)
+				parts = append(parts, cv.listItems(c, cv.ordered)...)
 
 				continue
 			case atom.Li:
-				parts = append(parts, t.listItem(c, "* "))
+				parts = append(parts, cv.listItem(c, cv.opts.bullet))
 
 				continue
 			case atom.Dt, atom.Dd:
-				parts = append(parts, t.listItem(c, ""))
+				parts = append(parts, cv.listItem(c, ""))
 
 				continue
 			case atom.Td, atom.Th:
-				parts = append(parts, t.doConvert(c)...)
+				parts = append(parts, cv.doConvert(c)...)
 				parts = append(parts, " ")
 
 				continue
 			case atom.Tr:
-				parts = append(parts, t.doConvert(c)...)
+				parts = append(parts, cv.doConvert(c)...)
 				parts = append(parts, "\n")
 
 				continue
 			case atom.Span:
 				var more []string
 
-				c, more = t.wrapSpans(c)
+				c, more = cv.wrapSpans(c)
 
 				parts = append(parts, more...)
 
@@ -179,7 +216,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				continue
 			case atom.Blockquote:
-				inner := strings.Trim(strings.Join(t.doConvert(c), ""), "\n")
+				inner := strings.Trim(strings.Join(cv.doConvert(c), ""), "\n")
 				parts = append(parts, "\n\n", quoteOpen, inner, quoteClose, "\n\n")
 
 				continue
@@ -196,15 +233,15 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				continue
 			case atom.H1:
-				parts = append(parts, t.headerBlock(c, "*", true)...)
+				parts = append(parts, cv.headerBlock(c, "*", true)...)
 
 				continue
 			case atom.H2:
-				parts = append(parts, t.headerBlock(c, "-", true)...)
+				parts = append(parts, cv.headerBlock(c, "-", true)...)
 
 				continue
 			case atom.H3, atom.H4, atom.H5, atom.H6:
-				parts = append(parts, t.headerBlock(c, "-", false)...)
+				parts = append(parts, cv.headerBlock(c, "-", false)...)
 
 				continue
 			case atom.Img:
@@ -214,7 +251,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				continue
 			case atom.A:
-				more := t.doConvert(c)
+				more := cv.doConvert(c)
 
 				href := strings.TrimSpace(getAttr(c, "href"))
 				// a fragment only points within the document, so only its text carries over
@@ -231,25 +268,13 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				href = strings.TrimPrefix(href, "mailto:")
 
-				if text == href {
-					parts = append(parts, href)
-
-					continue
-				} else if text == "" {
-					if containsImg(c) {
-						parts = append(parts, "( "+href+" )")
-					}
-
-					continue
-				}
-
-				parts = append(parts, text, " ( ", href, " )")
+				parts = append(parts, cv.link(text, href, containsImg(c))...)
 
 				continue
 			}
 		}
 
-		parts = append(parts, t.doConvert(c)...)
+		parts = append(parts, cv.doConvert(c)...)
 	}
 
 	return parts
@@ -358,6 +383,46 @@ func textOf(n *html.Node) string {
 	return sb.String()
 }
 
+// link renders an anchor according to the chosen style
+func (cv *conversion) link(text, href string, hasImg bool) []string {
+	switch cv.opts.links {
+	case LinksOmitted:
+		if text == "" {
+			return nil
+		}
+
+		return []string{text}
+
+	case LinksFootnotes:
+		if text == "" && !hasImg {
+			return nil
+		}
+
+		cv.links = append(cv.links, href)
+		marker := "[" + strconv.Itoa(len(cv.links)) + "]"
+
+		if text == "" {
+			return []string{marker}
+		}
+
+		return []string{text, " ", marker}
+	}
+
+	if text == href {
+		return []string{href}
+	}
+
+	if text == "" {
+		if hasImg {
+			return []string{"( " + href + " )"}
+		}
+
+		return nil
+	}
+
+	return []string{text, " ( ", href, " )"}
+}
+
 func containsImg(n *html.Node) bool {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.DataAtom == atom.Img {
@@ -372,14 +437,18 @@ func containsImg(n *html.Node) bool {
 	return false
 }
 
-func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool) []string {
-	headerText := strings.TrimSpace(strings.Join(t.doConvert(n), ""))
+func (cv *conversion) headerBlock(n *html.Node, blockChar string, prefix bool) []string {
+	headerText := strings.TrimSpace(strings.Join(cv.doConvert(n), ""))
 
 	var maxSize int
 	for line := range strings.SplitSeq(headerText, "\n") {
 		if l := len(strings.TrimSpace(line)); l > maxSize {
 			maxSize = l
 		}
+	}
+
+	if cv.opts.plainHeadings {
+		return []string{"\n\n", headerText, "\n\n"}
 	}
 
 	delimiter := strings.Repeat(blockChar, maxSize)
@@ -392,9 +461,11 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 	return append(block, headerText, "\n", delimiter, "\n\n")
 }
 
-func unordered(int) string { return "* " }
+func (cv *conversion) unordered(int) string { return cv.opts.bullet }
 
-func ordered(idx int) string { return strconv.Itoa(idx) + ". " }
+func (cv *conversion) ordered(idx int) string {
+	return strconv.Itoa(idx) + cv.opts.orderedSuffix
+}
 
 // listStart reads the start attribute of an ol, which may be negative
 func listStart(n *html.Node) int {
@@ -405,7 +476,7 @@ func listStart(n *html.Node) int {
 	return 1
 }
 
-func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []string {
+func (cv *conversion) listItems(n *html.Node, prefixer func(int) string) []string {
 	var (
 		parts []string
 		idx   = listStart(n)
@@ -418,10 +489,10 @@ func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []str
 
 		switch c.DataAtom {
 		case atom.Li:
-			parts = append(parts, t.listItem(c, prefixer(idx)))
+			parts = append(parts, cv.listItem(c, prefixer(idx)))
 			idx++
 		default:
-			parts = append(parts, t.doConvert(c)...)
+			parts = append(parts, cv.doConvert(c)...)
 		}
 	}
 
@@ -439,8 +510,8 @@ func nestedListBreak(parent *html.Node) []string {
 	return nil
 }
 
-func (t *TreeConverter) listItem(n *html.Node, prefix string) string {
-	content := strings.Trim(strings.Join(t.doConvert(n), ""), "\n")
+func (cv *conversion) listItem(n *html.Node, prefix string) string {
+	content := strings.Trim(strings.Join(cv.doConvert(n), ""), "\n")
 
 	// everything after the first line came from a nested list and belongs one
 	// level further in; marks already present deepen as they bubble up
@@ -464,7 +535,7 @@ func (t *TreeConverter) listItem(n *html.Node, prefix string) string {
 	return out.String()
 }
 
-func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string) {
+func (cv *conversion) wrapSpans(n *html.Node) (*html.Node, []string) {
 	var parts []string
 
 	var c *html.Node
@@ -481,7 +552,7 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string) {
 
 		switch c.Type {
 		case html.ElementNode:
-			span = strings.Join(t.doConvert(c), "")
+			span = strings.Join(cv.doConvert(c), "")
 		case html.TextNode:
 			span = c.Data
 		}
@@ -496,7 +567,7 @@ func (t *TreeConverter) wrapSpans(n *html.Node) (*html.Node, []string) {
 	return c, parts
 }
 
-func (t *TreeConverter) fixSpacing(rt string) string {
+func (cv *conversion) fixSpacing(rt string) string {
 	first, firstSize := utf8.DecodeRuneInString(rt)
 	if firstSize == 0 {
 		return rt
