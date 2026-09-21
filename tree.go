@@ -73,7 +73,13 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 			parts = append(parts, c.Data)
 		case html.ElementNode:
 			switch c.DataAtom {
-			case atom.Script, atom.Style:
+			// none of these render their text as document content: the media and
+			// frame elements hold legacy fallback that conforming renderers ignore,
+			// svg/math titles are metadata, and a template is inert
+			case atom.Script, atom.Style, atom.Template,
+				atom.Svg, atom.Math,
+				atom.Iframe, atom.Object, atom.Embed, atom.Canvas, atom.Audio, atom.Video,
+				atom.Select, atom.Datalist, atom.Textarea:
 				continue
 			}
 
@@ -154,8 +160,9 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 			case atom.A:
 				more := t.doConvert(c)
 
-				href := getAttr(c, "href")
-				if href == "" {
+				href := strings.TrimSpace(getAttr(c, "href"))
+				// a fragment only points within the document, so only its text carries over
+				if href == "" || strings.HasPrefix(href, "#") {
 					parts = append(parts, more...)
 
 					continue
@@ -180,7 +187,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 					continue
 				}
 
-				parts = append(parts, text, " ( ", strings.TrimSpace(href), " )")
+				parts = append(parts, text, " ( ", href, " )")
 
 				continue
 			}
@@ -230,10 +237,19 @@ func unordered(int) string { return "* " }
 
 func ordered(idx int) string { return strconv.Itoa(idx) + ". " }
 
+// listStart reads the start attribute of an ol, which may be negative
+func listStart(n *html.Node) int {
+	if start, err := strconv.Atoi(strings.TrimSpace(getAttr(n, "start"))); err == nil {
+		return start
+	}
+
+	return 1
+}
+
 func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []string {
 	var (
 		parts []string
-		idx   = 1
+		idx   = listStart(n)
 	)
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {

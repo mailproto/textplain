@@ -176,6 +176,26 @@ func TestLists(t *testing.T) {
 			expect: "1. one\n2. two\n1. fresh",
 		},
 		testCase{
+			name:   "<ol start> seeds the numbering",
+			body:   `<ol start="5"><li>a</li><li>b</li></ol>`,
+			expect: "5. a\n6. b",
+		},
+		testCase{
+			name:   "<ol start> may be negative",
+			body:   `<ol start="-1"><li>a</li><li>b</li></ol>`,
+			expect: "-1. a\n0. b",
+		},
+		testCase{
+			name:   "unparseable <ol start> falls back to one",
+			body:   `<ol start="abc"><li>a</li><li>b</li></ol>`,
+			expect: "1. a\n2. b",
+		},
+		testCase{
+			name:   "start on <ul> is ignored",
+			body:   `<ul start="5"><li>a</li><li>b</li></ul>`,
+			expect: "* a\n* b",
+		},
+		testCase{
 			name:   "list items with <ul> and infix whitespace",
 			body:   "<ul><li>item 1</li>  \t\n\t <li>item 2</li><li>item 3</li></ul>",
 			expect: "* item 1\n* item 2\n* item 3",
@@ -463,6 +483,21 @@ func TestLinks(t *testing.T) {
 			body:   `<a href="http://example.com" alt="http://example.com"></a>`,
 			expect: `http://example.com`,
 		},
+		testCase{
+			name:   "fragment only link keeps just its text",
+			body:   `<a href="#section">Jump</a>`,
+			expect: `Jump`,
+		},
+		testCase{
+			name:   "bare fragment link keeps just its text",
+			body:   `<a href="#">Top</a>`,
+			expect: `Top`,
+		},
+		testCase{
+			name:   "a fragment on a real url is still a link",
+			body:   `<a href="http://example.com/page#frag">Deep</a>`,
+			expect: `Deep ( http://example.com/page#frag )`,
+		},
 	)
 }
 
@@ -720,6 +755,51 @@ func TestHiddenContent(t *testing.T) {
 			name:   "aria-hidden false stays visible",
 			body:   `<p>shown</p><p aria-hidden="false">still visible</p>`,
 			expect: "shown\n\nstill visible",
+		},
+	)
+}
+
+func TestNonContentElements(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "select options are not document text",
+			body:   `<p>a</p><select><option>opt1</option><option>opt2</option></select>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "textarea holds a value, not text",
+			body:   `<p>a</p><textarea>editable</textarea>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "iframe fallback is ignored",
+			body:   `<p>a</p><iframe src="x.html">fallback</iframe>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "svg title is metadata",
+			body:   `<p>a</p><svg><title>icon</title></svg>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "media fallback is ignored",
+			body:   `<p>a</p><video src="v.mp4">no video support</video>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "template contents are inert",
+			body:   `<p>a</p><template><p>inert</p></template>`,
+			expect: "a",
+		},
+		testCase{
+			name:   "noscript is kept, since scripts never run here",
+			body:   `<p>a</p><noscript>shown when scripts are off</noscript>`,
+			expect: "a\n\nshown when scripts are off",
+		},
+		testCase{
+			name:   "button labels are visible text",
+			body:   `<p>a</p><button>Confirm your email</button>`,
+			expect: "a\n\nConfirm your email",
 		},
 	)
 }
