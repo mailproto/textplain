@@ -1,6 +1,9 @@
 package textplain
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // WordWrap searches for logical breakpoints in each line (whitespace) and tries to trim each
 // line to the specified length
@@ -13,47 +16,69 @@ func WordWrap(txt string, lineLength int) string {
 		return txt
 	}
 
-	var final []string
+	var (
+		out   strings.Builder
+		wrote bool
+	)
+
+	out.Grow(len(txt) + len(txt)/lineLength + 1)
 
 	for line := range strings.SplitSeq(txt, "\n") {
-		// lineLength counts characters, so index by rune rather than by byte
-		runes := []rune(line)
+		total := utf8.RuneCountInString(line)
 
-		var startIndex, endIndex int
-		for (len(runes)-endIndex) > lineLength && startIndex < len(runes) {
-			endIndex += lineLength
-			if endIndex >= len(runes) {
-				endIndex = len(runes) - 1
-			} else if endIndex < startIndex {
-				endIndex = startIndex
+		// lineLength counts characters, so the horizon advances by runes while
+		// everything else stays in byte offsets and slices the original string
+		var (
+			start, startRune int
+			end, endRune     int
+		)
+
+		for total-endRune > lineLength && startRune < total {
+			target := endRune + lineLength
+			if target >= total {
+				target = total - 1
+			} else if target < startRune {
+				target = startRune
 			}
 
-			newIndex := lastSpace(runes[startIndex : endIndex+1])
+			for endRune < target {
+				_, size := utf8.DecodeRuneInString(line[end:])
+				end += size
+				endRune++
+			}
+
+			_, size := utf8.DecodeRuneInString(line[end:])
+
+			newIndex := strings.LastIndex(line[start:end+size], " ")
 			if newIndex <= 0 {
 				continue
 			}
 
-			final = append(final, string(runes[startIndex:startIndex+newIndex]))
-			startIndex += newIndex
-			endIndex = startIndex
+			if wrote {
+				out.WriteByte('\n')
+			}
+
+			out.WriteString(line[start : start+newIndex])
+			wrote = true
+
+			prev := start
+			start += newIndex
+			endRune = startRune + utf8.RuneCountInString(line[prev:start])
+			end, startRune = start, endRune
 
 			// clear any extra space
-			for ; startIndex < len(runes) && runes[startIndex] == ' '; startIndex++ {
+			for ; start < len(line) && line[start] == ' '; start++ {
+				startRune++
 			}
 		}
 
-		final = append(final, string(runes[startIndex:]))
-	}
-
-	return strings.Join(final, "\n")
-}
-
-func lastSpace(runes []rune) int {
-	for i := len(runes) - 1; i >= 0; i-- {
-		if runes[i] == ' ' {
-			return i
+		if wrote {
+			out.WriteByte('\n')
 		}
+
+		out.WriteString(line[start:])
+		wrote = true
 	}
 
-	return -1
+	return out.String()
 }

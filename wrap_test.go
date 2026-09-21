@@ -3,6 +3,7 @@ package textplain_test
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/mailproto/textplain"
 	"github.com/stretchr/testify/assert"
@@ -59,4 +60,34 @@ func runeWidths(s string) []int {
 	}
 
 	return widths
+}
+
+func FuzzWordWrap(f *testing.F) {
+	for _, seed := range []string{"", " ", "hello world", "a  b   c", "1 23 45\n67\n1234567890 1   ", "áb áb áb", "日本語 の テキスト", strings.Repeat("é", 40)} {
+		for _, width := range []int{-1, 0, 1, 5, 20} {
+			f.Add(seed, width)
+		}
+	}
+
+	f.Fuzz(func(t *testing.T, txt string, lineLength int) {
+		if !utf8.ValidString(txt) {
+			return
+		}
+
+		wrapped := textplain.WordWrap(txt, lineLength)
+
+		assert.True(t, utf8.ValidString(wrapped), "wrapped output is not valid utf-8")
+		// wrapping only ever breaks at spaces, so no other character may be lost or moved
+		assert.Equal(t, stripWhitespace(txt), stripWhitespace(wrapped))
+	})
+}
+
+func stripWhitespace(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r == ' ' || r == '\n' {
+			return -1
+		}
+
+		return r
+	}, s)
 }
