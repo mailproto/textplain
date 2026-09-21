@@ -612,3 +612,33 @@ func TestMissingBody(t *testing.T) {
 		assert.Empty(t, result)
 	})
 }
+
+func TestTables(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "cells are separated and rows break",
+			body:   `<table><tr><td>Jan</td><td>Feb</td></tr><tr><td>1</td><td>2</td></tr></table>`,
+			expect: "Jan Feb\n1 2",
+		},
+		testCase{
+			name:   "header cells behave like data cells",
+			body:   `<table><thead><tr><th>Month</th><th>Total</th></tr></thead><tbody><tr><td>Jan</td><td>$5</td></tr></tbody></table>`,
+			expect: "Month Total\nJan $5",
+		},
+		testCase{
+			name:   "layout cells holding blocks are unaffected",
+			body:   `<table><tr><td><p>Layout cell</p></td></tr><tr><td><p>Second row</p></td></tr></table>`,
+			expect: "Layout cell\n\nSecond row",
+		},
+		testCase{
+			name:   "link in a cell is separated from the next cell",
+			body:   `<table><tr><td><a href="http://example.com">Link</a></td><td>next</td></tr></table>`,
+			expect: "Link ( http://example.com ) next",
+		},
+		testCase{
+			name:   "empty cells add no separator of their own",
+			body:   `<table><tr><td></td><td>only</td></tr></table>`,
+			expect: "only",
+		},
+	)
+}

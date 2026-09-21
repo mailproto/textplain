@@ -100,6 +100,16 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 				parts = append(parts, t.listItem(c, "* "))
 
 				continue
+			case atom.Td, atom.Th:
+				parts = append(parts, t.doConvert(c)...)
+				parts = append(parts, " ")
+
+				continue
+			case atom.Tr:
+				parts = append(parts, t.doConvert(c)...)
+				parts = append(parts, "\n")
+
+				continue
 			case atom.Span:
 				var more []string
 
