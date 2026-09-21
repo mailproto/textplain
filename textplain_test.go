@@ -678,6 +678,41 @@ func TestTables(t *testing.T) {
 	)
 }
 
+func TestBlockquote(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "quoted text is marked",
+			body:   `<blockquote>quoted</blockquote><p>after</p>`,
+			expect: "> quoted\n\nafter",
+		},
+		testCase{
+			name:   "blank lines inside a quote stay quoted",
+			body:   `<p>before</p><blockquote><p>para one</p><p>para two</p></blockquote><p>after</p>`,
+			expect: "before\n\n> para one\n>\n> para two\n\nafter",
+		},
+		testCase{
+			name:   "nesting deepens the marker",
+			body:   `<blockquote><blockquote>inner</blockquote>outer</blockquote>`,
+			expect: "> > inner\n>\n> outer",
+		},
+		testCase{
+			name:   "markup inside a quote still converts",
+			body:   `<blockquote><ul><li>a</li><li>b</li></ul></blockquote>`,
+			expect: "> * a\n> * b",
+		},
+	)
+
+	t.Run("every wrapped line keeps the marker", func(t *testing.T) {
+		t.Parallel()
+		result, err := textplain.Convert("<blockquote><p>"+strings.Repeat("quoted words ", 6)+"</p></blockquote>", 30)
+		require.NoError(t, err)
+
+		for _, line := range strings.Split(result, "\n") {
+			assert.True(t, strings.HasPrefix(line, ">"), "unmarked line %q", line)
+		}
+	})
+}
+
 func TestHorizontalRule(t *testing.T) {
 	runTestCases(t,
 		testCase{
