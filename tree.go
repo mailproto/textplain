@@ -1,6 +1,7 @@
 package textplain
 
 import (
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -92,7 +93,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 
 				continue
 			case atom.Ol:
-				parts = append(parts, t.listItems(c, unordered)...) // XXX: change to ordered
+				parts = append(parts, t.listItems(c, ordered)...)
 
 				continue
 			case atom.Li:
@@ -208,7 +209,9 @@ func (t *TreeConverter) headerBlock(n *html.Node, blockChar string, prefix bool)
 	return append(block, headerText, "\n", delimiter, "\n\n")
 }
 
-func unordered(idx int) string { return "* " }
+func unordered(int) string { return "* " }
+
+func ordered(idx int) string { return strconv.Itoa(idx) + ". " }
 
 func (t *TreeConverter) listItems(n *html.Node, prefixer func(int) string) []string {
 	var (
