@@ -887,3 +887,49 @@ func TestNonContentElements(t *testing.T) {
 		},
 	)
 }
+
+func TestPreformatted(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "indentation and tabs survive",
+			body:   "<pre>line1\n  indented\n\ttabbed</pre>",
+			expect: "line1\n  indented\n\ttabbed",
+		},
+		testCase{
+			name:   "surrounding text is unaffected",
+			body:   "<p>before</p><pre>a\n  b</pre><p>after</p>",
+			expect: "before\n\na\n  b\n\nafter",
+		},
+		testCase{
+			name:   "each block is restored in order",
+			body:   "<pre>one</pre><pre>  two</pre>",
+			expect: "one\n\n  two",
+		},
+		testCase{
+			name:   "markup inside is taken as text",
+			body:   "<pre><code>func main() {\n\tfmt.Println(1)\n}</code></pre>",
+			expect: "func main() {\n\tfmt.Println(1)\n}",
+		},
+	)
+
+	runTestCases(t,
+		testCase{
+			name:   "preformatted text inside a quote is marked on every line",
+			body:   "<blockquote><pre>quoted code\n  indented</pre></blockquote><p>after</p>",
+			expect: "> quoted code\n>   indented\n\nafter",
+		},
+		testCase{
+			name:   "a rule and a block do not tread on each other",
+			body:   "<p>a</p><hr/><pre>code</pre><p>b</p>",
+			expect: "a\n\n" + strings.Repeat("-", textplain.DefaultLineLength) + "\n\ncode\n\nb",
+		},
+	)
+
+	t.Run("preformatted text is not wrapped", func(t *testing.T) {
+		t.Parallel()
+		line := "aaaaaaaaaa bbbbbbbbbb cccccccccc dddddddddd"
+		result, err := textplain.Convert("<pre>"+line+"</pre>", 20)
+		require.NoError(t, err)
+		assert.Equal(t, line, result)
+	})
+}
