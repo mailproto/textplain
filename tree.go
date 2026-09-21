@@ -56,7 +56,11 @@ func (t *TreeConverter) Convert(document string, opts ...Option) (string, error)
 		return "", ErrBodyNotFound
 	}
 
-	preformatted, text := extractPre(strings.Join(cv.doConvert(body), ""))
+	var o output
+
+	cv.doConvert(&o, body)
+
+	preformatted, text := extractPre(o.String())
 
 	text = cv.fixSpacing(text)
 
@@ -118,12 +122,10 @@ func (cv *conversion) findBody(n *html.Node) *html.Node {
 	return nil
 }
 
-func (cv *conversion) doConvert(n *html.Node) []string {
+func (cv *conversion) doConvert(o *output, n *html.Node) {
 	if n == nil {
-		return nil
+		return
 	}
-
-	var parts []string
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		switch c.Type {
@@ -140,7 +142,7 @@ func (cv *conversion) doConvert(n *html.Node) []string {
 
 			continue
 		case html.TextNode:
-			parts = append(parts, c.Data)
+			o.write(c.Data)
 		case html.ElementNode:
 			switch c.DataAtom {
 			// none of these render their text as document content: the media and
@@ -159,121 +161,131 @@ func (cv *conversion) doConvert(n *html.Node) []string {
 
 			switch c.DataAtom {
 			case atom.P, atom.Div:
-				more := cv.doConvert(c)
+				m := o.mark()
+				cv.doConvert(o, c)
+				more := o.take(m)
 
-				if len(parts) > 0 {
-					if p := strings.Trim(parts[len(parts)-1], " \t"); len(p) == 0 || p[len(p)-1] != '\n' {
-						parts = append(parts, "\n")
-					}
+				if o.needsBreak() {
+					o.write("\n")
 				}
 
-				parts = append(parts, more...)
-				parts = append(parts, "\n\n")
+				o.write(more)
+				o.write("\n\n")
 
 				continue
 			case atom.Ul:
-				parts = append(parts, nestedListBreak(n)...)
-				parts = append(parts, cv.listItems(c, cv.unordered)...)
+				o.writeAll(nestedListBreak(n))
+				cv.listItems(o, c, cv.unordered)
 
 				continue
 			case atom.Ol:
-				parts = append(parts, nestedListBreak(n)...)
-				parts = append(parts, cv.listItems(c, cv.ordered)...)
+				o.writeAll(nestedListBreak(n))
+				cv.listItems(o, c, cv.ordered)
 
 				continue
 			case atom.Li:
-				parts = append(parts, cv.listItem(c, cv.opts.bullet))
+				o.write(cv.listItem(o, c, cv.opts.bullet))
 
 				continue
 			case atom.Dt, atom.Dd:
-				parts = append(parts, cv.listItem(c, ""))
+				o.write(cv.listItem(o, c, ""))
 
 				continue
 			case atom.Td, atom.Th:
-				parts = append(parts, cv.doConvert(c)...)
-				parts = append(parts, " ")
+				cv.doConvert(o, c)
+				o.write(" ")
 
 				continue
 			case atom.Tr:
-				parts = append(parts, cv.doConvert(c)...)
-				parts = append(parts, "\n")
+				cv.doConvert(o, c)
+				o.write("\n")
 
 				continue
 			case atom.Span:
-				var more []string
+				var done bool
 
-				c, more = cv.wrapSpans(c)
-
-				parts = append(parts, more...)
-
-				if c == nil {
-					return parts
+				c, done = cv.wrapSpans(o, c)
+				if done {
+					return
 				}
 
 				continue
 			case atom.Blockquote:
-				inner := strings.Trim(strings.Join(cv.doConvert(c), ""), "\n")
-				parts = append(parts, "\n\n", quoteOpen, inner, quoteClose, "\n\n")
+				m := o.mark()
+				cv.doConvert(o, c)
+				inner := strings.Trim(o.take(m), "\n")
+
+				o.write("\n\n")
+				o.write(quoteOpen)
+				o.write(inner)
+				o.write(quoteClose)
+				o.write("\n\n")
 
 				continue
 			case atom.Pre:
-				parts = append(parts, "\n\n", preOpen, textOf(c), preClose, "\n\n")
+				o.write("\n\n")
+				o.write(preOpen)
+				o.write(textOf(c))
+				o.write(preClose)
+				o.write("\n\n")
 
 				continue
 			case atom.Br:
-				parts = append(parts, "\n")
+				o.write("\n")
 
 				continue
 			case atom.Hr:
-				parts = append(parts, "\n\n", horizontalRule, "\n\n")
+				o.write("\n\n")
+				o.write(horizontalRule)
+				o.write("\n\n")
 
 				continue
 			case atom.H1:
-				parts = append(parts, cv.headerBlock(c, "*", true)...)
+				cv.headerBlock(o, c, "*", true)
 
 				continue
 			case atom.H2:
-				parts = append(parts, cv.headerBlock(c, "-", true)...)
+				cv.headerBlock(o, c, "-", true)
 
 				continue
 			case atom.H3, atom.H4, atom.H5, atom.H6:
-				parts = append(parts, cv.headerBlock(c, "-", false)...)
+				cv.headerBlock(o, c, "-", false)
 
 				continue
 			case atom.Img:
 				if alt := getAttr(c, "alt"); alt != "" {
-					parts = append(parts, strings.TrimSpace(alt))
+					o.write(strings.TrimSpace(alt))
 				}
 
 				continue
 			case atom.A:
-				more := cv.doConvert(c)
+				m := o.mark()
+				cv.doConvert(o, c)
+				more := o.take(m)
 
 				href := strings.TrimSpace(getAttr(c, "href"))
 				// a fragment only points within the document, so only its text carries over
 				if href == "" || strings.HasPrefix(href, "#") {
-					parts = append(parts, more...)
+					o.write(more)
 
 					continue
 				}
 
-				text := strings.TrimSpace(strings.Join(more, ""))
+				text := strings.TrimSpace(more)
 				if text == "" {
 					text = strings.TrimSpace(getAttr(c, "alt"))
 				}
 
 				href = strings.TrimPrefix(href, "mailto:")
 
-				parts = append(parts, cv.link(text, href, containsImg(c))...)
+				o.writeAll(cv.link(text, href, containsImg(c)))
 
 				continue
 			}
 		}
 
-		parts = append(parts, cv.doConvert(c)...)
+		cv.doConvert(o, c)
 	}
-
-	return parts
 }
 
 // applyQuotes turns the marked blockquote regions into a "> " prefix on every
@@ -433,8 +445,18 @@ func containsImg(n *html.Node) bool {
 	return false
 }
 
-func (cv *conversion) headerBlock(n *html.Node, blockChar string, prefix bool) []string {
-	headerText := strings.TrimSpace(strings.Join(cv.doConvert(n), ""))
+func (cv *conversion) headerBlock(o *output, n *html.Node, blockChar string, prefix bool) {
+	m := o.mark()
+	cv.doConvert(o, n)
+	headerText := strings.TrimSpace(o.take(m))
+
+	if cv.opts.plainHeadings {
+		o.write("\n\n")
+		o.write(headerText)
+		o.write("\n\n")
+
+		return
+	}
 
 	var maxSize int
 	for line := range strings.SplitSeq(headerText, "\n") {
@@ -443,18 +465,19 @@ func (cv *conversion) headerBlock(n *html.Node, blockChar string, prefix bool) [
 		}
 	}
 
-	if cv.opts.plainHeadings {
-		return []string{"\n\n", headerText, "\n\n"}
-	}
-
 	delimiter := strings.Repeat(blockChar, maxSize)
 
-	block := []string{"\n\n"}
+	o.write("\n\n")
+
 	if prefix {
-		block = append(block, delimiter, "\n")
+		o.write(delimiter)
+		o.write("\n")
 	}
 
-	return append(block, headerText, "\n", delimiter, "\n\n")
+	o.write(headerText)
+	o.write("\n")
+	o.write(delimiter)
+	o.write("\n\n")
 }
 
 func (cv *conversion) unordered(int) string { return cv.opts.bullet }
@@ -472,11 +495,8 @@ func listStart(n *html.Node) int {
 	return 1
 }
 
-func (cv *conversion) listItems(n *html.Node, prefixer func(int) string) []string {
-	var (
-		parts []string
-		idx   = listStart(n)
-	)
+func (cv *conversion) listItems(o *output, n *html.Node, prefixer func(int) string) {
+	idx := listStart(n)
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && isHidden(c) {
@@ -485,19 +505,14 @@ func (cv *conversion) listItems(n *html.Node, prefixer func(int) string) []strin
 
 		switch c.DataAtom {
 		case atom.Li:
-			parts = append(parts, cv.listItem(c, prefixer(idx)))
+			o.write(cv.listItem(o, c, prefixer(idx)))
 			idx++
 		default:
-			parts = append(parts, cv.doConvert(c)...)
+			cv.doConvert(o, c)
 		}
 	}
-
-	return parts
 }
 
-// nestedListBreak starts a list nested in an item on its own line, so that it
-// does not run into the item's text. listItem relies on that break to tell the
-// two apart.
 func nestedListBreak(parent *html.Node) []string {
 	if parent != nil && parent.DataAtom == atom.Li {
 		return []string{"\n"}
@@ -506,8 +521,11 @@ func nestedListBreak(parent *html.Node) []string {
 	return nil
 }
 
-func (cv *conversion) listItem(n *html.Node, prefix string) string {
-	content := strings.Trim(strings.Join(cv.doConvert(n), ""), "\n")
+func (cv *conversion) listItem(o *output, n *html.Node, prefix string) string {
+	m := o.mark()
+	cv.doConvert(o, n)
+
+	content := strings.Trim(o.take(m), "\n")
 
 	// everything after the first line came from a nested list and belongs one
 	// level further in; marks already present deepen as they bubble up
@@ -531,13 +549,14 @@ func (cv *conversion) listItem(n *html.Node, prefix string) string {
 	return out.String()
 }
 
-func (cv *conversion) wrapSpans(n *html.Node) (*html.Node, []string) {
-	var parts []string
-
+// wrapSpans consumes a run of sibling spans, returning the node to resume from
+// and whether the run reached the end of the siblings
+func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 	var c *html.Node
+
 	for c = n; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && c.DataAtom != atom.Span {
-			return c.PrevSibling, parts
+			return c.PrevSibling, false
 		}
 
 		if c.Type == html.ElementNode && isHidden(c) {
@@ -548,7 +567,9 @@ func (cv *conversion) wrapSpans(n *html.Node) (*html.Node, []string) {
 
 		switch c.Type {
 		case html.ElementNode:
-			span = strings.Join(cv.doConvert(c), "")
+			m := o.mark()
+			cv.doConvert(o, c)
+			span = o.take(m)
 		case html.TextNode:
 			span = c.Data
 		}
@@ -557,10 +578,10 @@ func (cv *conversion) wrapSpans(n *html.Node) (*html.Node, []string) {
 			span = trimmed + " "
 		}
 
-		parts = append(parts, span)
+		o.write(span)
 	}
 
-	return c, parts
+	return nil, true
 }
 
 func (cv *conversion) fixSpacing(rt string) string {
