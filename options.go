@@ -31,6 +31,11 @@ type Options struct {
 
 	// PlainHeadings leaves off the rule characters drawn around headings.
 	PlainHeadings bool
+
+	// BaseURL resolves relative link and image targets. A base element in the
+	// document takes precedence. Relative targets are left as written when
+	// neither is given.
+	BaseURL string
 }
 
 func (o Options) bullet() string {

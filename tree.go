@@ -1,6 +1,7 @@
 package textplain
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,7 @@ type TreeConverter struct{}
 type conversion struct {
 	opts  Options
 	links []string
+	base  *url.URL
 }
 
 func NewTreeConverter() Converter {
@@ -38,6 +40,7 @@ func (t *TreeConverter) ConvertWithOptions(document string, opts Options) (strin
 	}
 
 	cv := &conversion{opts: opts}
+	cv.base = documentBase(root, opts.BaseURL)
 
 	body := cv.findBody(root)
 	if body == nil {
@@ -84,6 +87,61 @@ func (cv *conversion) footnotes() string {
 	}
 
 	return out.String()
+}
+
+// documentBase prefers a base element over the configured base url, matching
+// how a browser resolves the document's links
+func documentBase(root *html.Node, configured string) *url.URL {
+	base, err := url.Parse(configured)
+	if err != nil {
+		base = nil
+	}
+
+	if href := findBaseHref(root); href != "" {
+		if fromDocument, err := url.Parse(href); err == nil {
+			if base != nil {
+				base = base.ResolveReference(fromDocument)
+			} else {
+				base = fromDocument
+			}
+		}
+	}
+
+	if base == nil || !base.IsAbs() {
+		return nil
+	}
+
+	return base
+}
+
+func findBaseHref(n *html.Node) string {
+	if n.Type == html.ElementNode && n.DataAtom == atom.Base {
+		if href := strings.TrimSpace(getAttr(n, "href")); href != "" {
+			return href
+		}
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if href := findBaseHref(c); href != "" {
+			return href
+		}
+	}
+
+	return ""
+}
+
+// resolve turns a relative target into an absolute one when a base is known
+func (cv *conversion) resolve(href string) string {
+	if cv.base == nil || href == "" {
+		return href
+	}
+
+	ref, err := url.Parse(href)
+	if err != nil || ref.IsAbs() {
+		return href
+	}
+
+	return cv.base.ResolveReference(ref).String()
 }
 
 func (cv *conversion) findBody(n *html.Node) *html.Node {
@@ -236,6 +294,10 @@ func (cv *conversion) doConvert(n *html.Node) []string {
 				text := strings.TrimSpace(strings.Join(more, ""))
 				if text == "" {
 					text = strings.TrimSpace(getAttr(c, "alt"))
+				}
+
+				if !strings.HasPrefix(href, "mailto:") {
+					href = cv.resolve(href)
 				}
 
 				href = strings.TrimPrefix(href, "mailto:")
