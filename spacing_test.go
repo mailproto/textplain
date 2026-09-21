@@ -16,7 +16,7 @@ func FuzzFixSpacing(f *testing.F) {
 		f.Add(seed)
 	}
 
-	var c TreeConverter
+	var c conversion
 
 	f.Fuzz(func(t *testing.T, in string) {
 		if !utf8.ValidString(in) {
@@ -39,7 +39,7 @@ func FuzzFixSpacing(f *testing.F) {
 }
 
 func TestFixSpacingIsSingleAllocation(t *testing.T) {
-	var c TreeConverter
+	var c conversion
 
 	input := strings.Repeat("Some text.  \n\n   * item\n\t* item\n\nMore    prose.\n", 200)
 

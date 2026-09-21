@@ -26,3 +26,42 @@ wrapped := textplain.WordWrap("hello world, here is some text", 15)
 ```
 
 Pass a line length of zero or less to skip wrapping entirely.
+
+## Options
+
+`ConvertWithOptions` takes any number of options. With none it behaves like `Convert` at
+`DefaultLineLength`.
+
+```go
+myPlaintext, err := textplain.ConvertWithOptions(myHTML,
+	textplain.WithLinks(textplain.LinksFootnotes),
+	textplain.WithPlainHeadings(),
+)
+```
+
+| option | default |
+| --- | --- |
+| `WithLineLength(chars)` | `DefaultLineLength`; zero or less does not wrap |
+| `WithBullet(prefix)` | `"* "` on unordered list items |
+| `WithOrderedSuffix(suffix)` | `". "` after the number on ordered list items |
+| `WithLinks(style)` | `LinksInline` |
+| `WithPlainHeadings()` | off, so headings are drawn with rule characters |
+
+Later options win, so a caller can layer its own on top of a shared set.
+
+`WithLinks` takes one of three styles:
+
+| style | `<a href="https://example.com">Docs</a>` becomes |
+| --- | --- |
+| `LinksInline` | `Docs ( https://example.com )` |
+| `LinksOmitted` | `Docs` |
+| `LinksFootnotes` | `Docs [1]`, with the targets listed under the body |
+
+`LinksFootnotes` numbers each target in the order it appears:
+
+```
+Read the Docs [1] or the changelog [2].
+
+[1] https://example.com
+[2] https://example.com/changelog
+```
