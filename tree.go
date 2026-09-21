@@ -11,7 +11,7 @@ import (
 const (
 	quoteOpen  = "\x01"
 	quoteClose = "\x02"
-  horizontalRule = "\x00"
+	horizontalRule = "\x00"
 )
 
 type TreeConverter struct{}
