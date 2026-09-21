@@ -8,10 +8,22 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+// Markers stand in for things that cannot be settled until spacing and
+// wrapping have run. The parser never emits control characters, so none of
+// these can collide with content. Allocated in order; take the next free value
+// when adding another.
 const (
+	// horizontalRule is drawn once Convert knows the line length
+	horizontalRule = "\x00"
+
+	// a blockquote's extent, turned into line prefixes after wrapping
 	quoteOpen  = "\x01"
 	quoteClose = "\x02"
-	horizontalRule = "\x00"
+
+	// preformatted text, lifted out so that nothing reflows it
+	preOpen        = "\x04"
+	preClose       = "\x05"
+	prePlaceholder = "\x06"
 )
 
 type TreeConverter struct{}
@@ -31,7 +43,9 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 		return "", ErrBodyNotFound
 	}
 
-	text := t.fixSpacing(strings.Join(t.doConvert(body), ""))
+	preformatted, text := extractPre(strings.Join(t.doConvert(body), ""))
+
+	text = t.fixSpacing(text)
 
 	if strings.Contains(text, horizontalRule) {
 		width := lineLength
@@ -45,6 +59,10 @@ func (t *TreeConverter) Convert(document string, lineLength int) (string, error)
 	wrapped := WordWrap(strings.TrimSpace(text), lineLength)
 	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
 	wrapped = strings.ReplaceAll(wrapped, "\n)", " )\n") // XXX: cheap fix for wrapping closed braces. move into WordWrap
+
+	for _, block := range preformatted {
+		wrapped = strings.Replace(wrapped, prePlaceholder, block, 1)
+	}
 
 	return applyQuotes(wrapped), nil
 }
@@ -159,6 +177,10 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 				parts = append(parts, "\n\n", quoteOpen, inner, quoteClose, "\n\n")
 
 				continue
+			case atom.Pre:
+				parts = append(parts, "\n\n", preOpen, textOf(c), preClose, "\n\n")
+
+				continue
 			case atom.Br:
 				parts = append(parts, "\n")
 
@@ -265,6 +287,69 @@ func applyQuotes(text string) string {
 	}
 
 	return out.String()
+}
+
+// extractPre lifts each preformatted block out of the text, leaving a
+// placeholder, so that spacing and wrapping do not touch it
+func extractPre(text string) ([]string, string) {
+	if !strings.Contains(text, preOpen) {
+		return nil, text
+	}
+
+	var (
+		blocks []string
+		out    strings.Builder
+	)
+
+	for {
+		start := strings.Index(text, preOpen)
+		if start < 0 {
+			break
+		}
+
+		end := strings.Index(text[start:], preClose)
+		if end < 0 {
+			break
+		}
+
+		end += start
+
+		out.WriteString(text[:start])
+		out.WriteString(prePlaceholder)
+		blocks = append(blocks, strings.Trim(text[start+len(preOpen):end], "\n"))
+
+		text = text[end+len(preClose):]
+	}
+
+	out.WriteString(text)
+
+	return blocks, out.String()
+}
+
+// textOf collects the raw text of a subtree, keeping whitespace as written
+func textOf(n *html.Node) string {
+	var (
+		sb   strings.Builder
+		walk func(*html.Node)
+	)
+
+	walk = func(n *html.Node) {
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			switch c.Type {
+			case html.TextNode:
+				sb.WriteString(c.Data)
+			case html.ElementNode:
+				if c.DataAtom == atom.Br {
+					sb.WriteString("\n")
+				}
+
+				walk(c)
+			}
+		}
+	}
+	walk(n)
+
+	return sb.String()
 }
 
 func containsImg(n *html.Node) bool {
