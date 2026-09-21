@@ -147,8 +147,9 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 			case atom.A:
 				more := t.doConvert(c)
 
-				href := getAttr(c, "href")
-				if href == "" {
+				href := strings.TrimSpace(getAttr(c, "href"))
+				// a fragment only points within the document, so only its text carries over
+				if href == "" || strings.HasPrefix(href, "#") {
 					parts = append(parts, more...)
 
 					continue
@@ -173,7 +174,7 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 					continue
 				}
 
-				parts = append(parts, text, " ( ", strings.TrimSpace(href), " )")
+				parts = append(parts, text, " ( ", href, " )")
 
 				continue
 			}
