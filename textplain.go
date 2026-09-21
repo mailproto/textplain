@@ -1,3 +1,5 @@
+// textplain converts the HTML part of an email into a text/plain
+// compatible format
 package textplain
 
 // Defaults.
