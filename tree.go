@@ -73,7 +73,13 @@ func (t *TreeConverter) doConvert(n *html.Node) []string {
 			parts = append(parts, c.Data)
 		case html.ElementNode:
 			switch c.DataAtom {
-			case atom.Script, atom.Style:
+			// none of these render their text as document content: the media and
+			// frame elements hold legacy fallback that conforming renderers ignore,
+			// svg/math titles are metadata, and a template is inert
+			case atom.Script, atom.Style, atom.Template,
+				atom.Svg, atom.Math,
+				atom.Iframe, atom.Object, atom.Embed, atom.Canvas, atom.Audio, atom.Video,
+				atom.Select, atom.Datalist, atom.Textarea:
 				continue
 			case atom.P, atom.Div:
 				more := t.doConvert(c)
