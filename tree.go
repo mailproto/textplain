@@ -160,7 +160,10 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 			}
 
 			switch c.DataAtom {
-			case atom.P, atom.Div:
+			case atom.P, atom.Div,
+				atom.Article, atom.Aside, atom.Section, atom.Header, atom.Footer, atom.Main, atom.Nav,
+				atom.Figure, atom.Figcaption, atom.Address, atom.Details, atom.Summary,
+				atom.Fieldset, atom.Legend, atom.Form, atom.Hgroup, atom.Caption:
 				m := o.mark()
 				cv.doConvert(o, c)
 				more := o.take(m)
