@@ -479,13 +479,13 @@ func TestLinks(t *testing.T) {
 		testCase{
 			name: "long links stay on a single line",
 			body: `<a href="http://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + `">Hello</a>`,
-			expect: `Hello 
+			expect: `Hello
 ( http://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + ` )`,
 		},
 		testCase{
 			name: "long non-http links stay on a single line",
 			body: `<a href="gopher://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + `">Hello</a>`,
-			expect: `Hello 
+			expect: `Hello
 ( gopher://example.com/` + strings.Repeat("A", textplain.DefaultLineLength) + ` )`,
 		},
 		testCase{

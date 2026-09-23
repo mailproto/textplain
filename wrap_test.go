@@ -53,6 +53,14 @@ func TestWrappingMultibyteWithoutBreakpoints(t *testing.T) {
 	assert.Equal(t, unbroken, textplain.WordWrap(unbroken, 10))
 }
 
+func TestWrappingKeepsBracketsWithTheirContent(t *testing.T) {
+	assert.Equal(t, "see\n( abcdefgh )", textplain.WordWrap("see ( abcdefgh )", 12))
+	assert.Equal(t, "one two\nthree )", textplain.WordWrap("one two three )", 13))
+	assert.Equal(t, "one two\nthree ).", textplain.WordWrap("one two three ).", 14), "punctuation may follow the )")
+	assert.Equal(t, "( abcdefghijkl", textplain.WordWrap("( abcdefghijkl", 5), "a leading ( has nowhere to go")
+	assert.Equal(t, "f(\nx)", textplain.WordWrap("f( x)", 3), "only lone brackets are kept together")
+}
+
 func runeWidths(s string) []int {
 	var widths []int
 	for _, line := range strings.Split(s, "\n") {
