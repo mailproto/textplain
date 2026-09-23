@@ -148,6 +148,11 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 
 			continue
 		case html.TextNode:
+			// list items end their own line, so whitespace between them is layout
+			if c.PrevSibling != nil && c.PrevSibling.DataAtom == atom.Li && strings.TrimSpace(c.Data) == "" {
+				continue
+			}
+
 			o.write(c.Data)
 		case html.ElementNode:
 			switch c.DataAtom {
@@ -666,8 +671,6 @@ func fixSpacing(rt string) string {
 	var (
 		beforeLast = first
 		last       = second
-		previous   = second
-		inList     = first == '*' && second == ' '
 	)
 
 	for i := firstSize + secondSize; i < len(rt); {
@@ -679,10 +682,6 @@ func fixSpacing(rt string) string {
 			keep = false
 		case last == '\n' && beforeLast == '\n' && v == '\n':
 			keep = false
-		case last == '\n' && inList && v == '\n' && stillInList(rt[i:]):
-			keep = false
-		case last == '\n':
-			inList = previous == '*' && v == ' '
 		case last == ' ' && v == ' ':
 			keep = false
 		case last == ' ' && (v == '\t' || v == '\n'):
@@ -690,22 +689,12 @@ func fixSpacing(rt string) string {
 			keep = false
 		}
 
-		// whitespace characters used for preheader blocks produce a cleaner
-		// plaintext output when dropped
-		if keep && isPreheaderMark(v) {
-			previous = v
-			i += size
-
-			continue
-		}
-
-		if keep {
+		if keep && !isPreheaderMark(v) {
 			out.WriteRune(last)
 
 			beforeLast, last = last, v
 		}
 
-		previous = v
 		i += size
 	}
 
@@ -716,22 +705,6 @@ func fixSpacing(rt string) string {
 
 func isPreheaderMark(r rune) bool {
 	return strings.ContainsRune("\u034f\u00ad\u2007\u200b\u200c\ufeff", r)
-}
-
-// stillInList reports whether the next non-whitespace thing is another bullet
-func stillInList(s string) bool {
-	for j := 0; j < len(s); {
-		r, size := utf8.DecodeRuneInString(s[j:])
-		if r == '\t' || r == ' ' || r == '\n' {
-			j += size
-
-			continue
-		}
-
-		return r == '*' && strings.HasPrefix(s[j+size:], " ")
-	}
-
-	return false
 }
 
 // isHidden reports whether an element is kept out of the rendered message.
