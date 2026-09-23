@@ -742,6 +742,36 @@ func TestHorizontalRule(t *testing.T) {
 	})
 }
 
+func TestBlockElements(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "sibling articles",
+			body:   `<article>one</article><article>two</article>`,
+			expect: "one\n\ntwo",
+		},
+		testCase{
+			name:   "page landmarks",
+			body:   `<header>Head</header><main><p>Body</p></main><footer>Foot</footer>`,
+			expect: "Head\n\nBody\n\nFoot",
+		},
+		testCase{
+			name:   "figure and caption",
+			body:   `<figure><img alt="chart" src="c.png"/><figcaption>Fig 1</figcaption></figure>`,
+			expect: "chart\nFig 1",
+		},
+		testCase{
+			name:   "table caption",
+			body:   `<table><caption>Sales</caption><tr><td>a</td></tr></table>`,
+			expect: "Sales\n\na",
+		},
+		testCase{
+			name:   "output stays inline",
+			body:   `<p>total <output>5</output> items</p>`,
+			expect: "total 5 items",
+		},
+	)
+}
+
 func TestDefinitionLists(t *testing.T) {
 	runTestCases(t,
 		testCase{
