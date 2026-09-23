@@ -161,7 +161,10 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 			}
 
 			switch c.DataAtom {
-			case atom.P, atom.Div:
+			case atom.P, atom.Div,
+				atom.Article, atom.Aside, atom.Section, atom.Header, atom.Footer, atom.Main, atom.Nav,
+				atom.Figure, atom.Figcaption, atom.Address, atom.Details, atom.Summary,
+				atom.Fieldset, atom.Legend, atom.Form, atom.Hgroup, atom.Caption:
 				m := o.mark()
 				cv.doConvert(o, c)
 				more := o.take(m)
@@ -235,6 +238,17 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				m := o.mark()
 				cv.doConvert(o, c)
 				o.write(shifted(strings.TrimSpace(o.take(m)), c.DataAtom == atom.Sup))
+
+				continue
+			case atom.Abbr, atom.Acronym:
+				m := o.mark()
+				cv.doConvert(o, c)
+				text := o.take(m)
+				o.write(text)
+
+				if title := strings.TrimSpace(getAttr(c, "title")); title != "" && !strings.EqualFold(title, strings.TrimSpace(text)) {
+					o.write(" (" + title + ")")
+				}
 
 				continue
 			case atom.Br:
