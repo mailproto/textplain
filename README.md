@@ -19,6 +19,8 @@ if err != nil {
 }
 ```
 
+`ConvertReader` does the same for an `io.Reader`, such as a MIME part, and also returns any error from reading it.
+
 Output wraps at `DefaultLineLength`, which is 65. The word wrapping is exported for use on its own, and counts characters rather than bytes:
 
 ```go
