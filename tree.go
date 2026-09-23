@@ -11,9 +11,9 @@ import (
 )
 
 // Markers stand in for things that cannot be settled until spacing and
-// wrapping have run. The parser never emits control characters, so none of
-// these can collide with content. Allocated in order; take the next free value
-// when adding another.
+// wrapping have run. Text and attributes are read through withoutMarkers so
+// that content cannot collide with them. Allocated in order; take the next free
+// value when adding another, and extend withoutMarkers.
 const (
 	// horizontalRule is drawn once Convert knows the line length
 	horizontalRule = "\x00"
@@ -30,6 +30,25 @@ const (
 	preClose       = "\x05"
 	prePlaceholder = "\x06"
 )
+
+// withoutMarkers drops marker bytes, where raw control characters and entities
+// such as &#1; would otherwise land them. Markers are ASCII, so a byte scan
+// cannot match inside a multi-byte rune.
+func withoutMarkers(s string) string {
+	for i := 0; i < len(s); i++ {
+		if s[i] <= '\x06' {
+			return strings.Map(func(r rune) rune {
+				if r <= '\x06' {
+					return -1
+				}
+
+				return r
+			}, s)
+		}
+	}
+
+	return s
+}
 
 // conversion holds the state of a single Convert call.
 type conversion struct {
@@ -140,7 +159,7 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				continue
 			}
 
-			o.write(c.Data)
+			o.write(withoutMarkers(c.Data))
 		case html.ElementNode:
 			switch c.DataAtom {
 			// none of these render their text as document content: the media and
@@ -449,7 +468,7 @@ func textOf(n *html.Node) string {
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			switch c.Type {
 			case html.TextNode:
-				sb.WriteString(c.Data)
+				sb.WriteString(withoutMarkers(c.Data))
 			case html.ElementNode:
 				if c.DataAtom == atom.Br {
 					sb.WriteString("\n")
@@ -655,7 +674,7 @@ func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 			cv.doConvert(o, c)
 			span = o.take(m)
 		case html.TextNode:
-			span = c.Data
+			span = withoutMarkers(c.Data)
 		}
 
 		if trimmed := strings.TrimRight(span, "\n\t "); len(trimmed) != len(span) {
@@ -786,7 +805,7 @@ func isZeroValue(value string) bool {
 func getAttr(n *html.Node, name string) string {
 	for _, a := range n.Attr {
 		if a.Key == name {
-			return a.Val
+			return withoutMarkers(a.Val)
 		}
 	}
 

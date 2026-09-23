@@ -1074,6 +1074,31 @@ func TestManyPreformattedBlocks(t *testing.T) {
 	assert.Equal(t, strings.Join(expect, "\n\n"), result)
 }
 
+func TestMarkersInContent(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "entities cannot open a quote",
+			body:   `<p>see &#x01;quote&#x02; here</p>`,
+			expect: "see quote here",
+		},
+		testCase{
+			name:   "raw control characters are dropped",
+			body:   "<p>a\x00b\x01c\x02d\x03e\x04f\x05g\x06h</p>",
+			expect: "abcdefgh",
+		},
+		testCase{
+			name:   "a placeholder in text does not take a preformatted block",
+			body:   "<p>x&#6;y</p><pre>code</pre>",
+			expect: "xy\n\ncode",
+		},
+		testCase{
+			name:   "attributes are cleaned too",
+			body:   `<img alt="a&#3;b"/> <a href="http://e.com/&#1;x">link</a>`,
+			expect: "ab link ( http://e.com/x )",
+		},
+	)
+}
+
 func TestPreformatted(t *testing.T) {
 	runTestCases(t,
 		testCase{
