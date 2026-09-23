@@ -1,6 +1,7 @@
 package textplain_test
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1058,6 +1059,19 @@ func TestNestedLists(t *testing.T) {
 			expect: "> * top\n>   * child\n\nafter",
 		},
 	)
+}
+
+func TestManyPreformattedBlocks(t *testing.T) {
+	var body, expect []string
+	for i := range 50 {
+		n := strconv.Itoa(i)
+		body = append(body, "<pre>block "+n+"\n  indented</pre>")
+		expect = append(expect, "block "+n+"\n  indented")
+	}
+
+	result, err := textplain.Convert(strings.Join(body, ""))
+	require.NoError(t, err)
+	assert.Equal(t, strings.Join(expect, "\n\n"), result)
 }
 
 func TestPreformatted(t *testing.T) {

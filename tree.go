@@ -72,9 +72,7 @@ func Convert(document string, opts ...Option) (string, error) {
 
 	wrapped := WordWrap(strings.TrimSpace(text), cv.opts.lineLength)
 
-	for _, block := range preformatted {
-		wrapped = strings.Replace(wrapped, prePlaceholder, block, 1)
-	}
+	wrapped = restorePre(wrapped, preformatted)
 
 	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")) + cv.footnotes(), nil
 }
@@ -406,6 +404,38 @@ func extractPre(text string) ([]string, string) {
 	out.WriteString(text)
 
 	return blocks, out.String()
+}
+
+// restorePre puts each preformatted block back in place of its placeholder, in
+// one pass
+func restorePre(text string, blocks []string) string {
+	if len(blocks) == 0 {
+		return text
+	}
+
+	size := len(text)
+	for _, block := range blocks {
+		size += len(block)
+	}
+
+	var out strings.Builder
+
+	out.Grow(size)
+
+	for _, block := range blocks {
+		before, after, found := strings.Cut(text, prePlaceholder)
+		if !found {
+			break
+		}
+
+		out.WriteString(before)
+		out.WriteString(block)
+		text = after
+	}
+
+	out.WriteString(text)
+
+	return out.String()
 }
 
 // textOf collects the raw text of a subtree, keeping whitespace as written
