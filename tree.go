@@ -164,7 +164,7 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 			case atom.P, atom.Div,
 				atom.Article, atom.Aside, atom.Section, atom.Header, atom.Footer, atom.Main, atom.Nav,
 				atom.Figure, atom.Figcaption, atom.Address, atom.Details, atom.Summary,
-				atom.Fieldset, atom.Legend, atom.Form, atom.Hgroup, atom.Caption:
+				atom.Fieldset, atom.Legend, atom.Form, atom.Hgroup, atom.Caption, atom.Center:
 				m := o.mark()
 				cv.doConvert(o, c)
 				more := o.take(m)
@@ -297,7 +297,9 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 					text = strings.TrimSpace(getAttr(c, "alt"))
 				}
 
-				href = strings.TrimPrefix(href, "mailto:")
+				if len(href) >= len("mailto:") && strings.EqualFold(href[:len("mailto:")], "mailto:") {
+					href = href[len("mailto:"):]
+				}
 
 				o.writeAll(cv.link(text, href, containsImg(c)))
 
@@ -455,7 +457,7 @@ func (cv *conversion) link(text, href string, hasImg bool) []string {
 		return []string{text, " ", marker}
 	}
 
-	if text == href {
+	if sameTarget(text, href) {
 		return []string{href}
 	}
 
@@ -468,6 +470,21 @@ func (cv *conversion) link(text, href string, hasImg bool) []string {
 	}
 
 	return []string{text, " ( ", href, " )"}
+}
+
+// sameTarget reports whether link text is just its href, give or take the scheme
+// and a trailing slash
+func sameTarget(text, href string) bool {
+	trim := func(s string) string {
+		s = strings.TrimSuffix(s, "/")
+		if _, rest, ok := strings.Cut(s, "://"); ok {
+			return rest
+		}
+
+		return s
+	}
+
+	return text != "" && trim(text) == trim(href)
 }
 
 func containsImg(n *html.Node) bool {
@@ -693,7 +710,7 @@ func (cv *conversion) fixSpacing(rt string) string {
 }
 
 func isPreheaderMark(r rune) bool {
-	return r == '\u034f' || r == '\u00ad' || r == '\u2007'
+	return strings.ContainsRune("\u034f\u00ad\u2007\u200b\u200c\ufeff", r)
 }
 
 // stillInList reports whether the next non-whitespace thing is another bullet

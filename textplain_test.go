@@ -76,6 +76,16 @@ func TestStrippingWhitespace(t *testing.T) {
 			expect: "test text\n\nhello",
 		},
 		testCase{
+			name:   "zero width preheader padding",
+			body:   "<p>Preview&zwnj;&#8203;&#65279;</p><p>Body</p>",
+			expect: "Preview\n\nBody",
+		},
+		testCase{
+			name:   "zero width joiner is kept for emoji",
+			body:   "<p>&#128104;&#8205;&#128105;</p>",
+			expect: "\U0001F468\u200d\U0001F469",
+		},
+		testCase{
 			name:   "infix repeated space",
 			body:   "test        text",
 			expect: "test text",
@@ -390,6 +400,26 @@ func TestLinks(t *testing.T) {
 			name:   "mailto link",
 			body:   `<a href='mailto:contact@example.org'>Contact Us</a>`,
 			expect: `Contact Us ( contact@example.org )`,
+		},
+		testCase{
+			name:   "uppercase mailto link",
+			body:   `<a href='MAILTO:contact@example.org'>contact@example.org</a>`,
+			expect: `contact@example.org`,
+		},
+		testCase{
+			name:   "text is the href without its trailing slash",
+			body:   `<a href="https://example.com/">https://example.com</a>`,
+			expect: `https://example.com/`,
+		},
+		testCase{
+			name:   "text is the href without its scheme",
+			body:   `<a href="http://example.com">example.com</a>`,
+			expect: `http://example.com`,
+		},
+		testCase{
+			name:   "text differs from the href by more than the scheme",
+			body:   `<a href="http://example.com/a">example.com</a>`,
+			expect: `example.com ( http://example.com/a )`,
 		},
 		testCase{
 			name:   "complicated link",
@@ -823,6 +853,11 @@ func TestBlockElements(t *testing.T) {
 			name:   "table caption",
 			body:   `<table><caption>Sales</caption><tr><td>a</td></tr></table>`,
 			expect: "Sales\n\na",
+		},
+		testCase{
+			name:   "center",
+			body:   `<center>a</center><center>b</center>`,
+			expect: "a\n\nb",
 		},
 		testCase{
 			name:   "output stays inline",
