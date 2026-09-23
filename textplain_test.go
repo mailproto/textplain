@@ -1,9 +1,11 @@
 package textplain_test
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/mailproto/textplain"
 	"github.com/stretchr/testify/assert"
@@ -674,6 +676,22 @@ func TestFixSpacing(t *testing.T) {
 			expect: "* one\n\n* two",
 		},
 	)
+}
+
+func TestConvertReader(t *testing.T) {
+	t.Run("matches Convert", func(t *testing.T) {
+		t.Parallel()
+		result, err := textplain.ConvertReader(strings.NewReader("<p>Test</p>"), textplain.WithLineLength(0))
+		require.NoError(t, err)
+		assert.Equal(t, "Test", result)
+	})
+
+	t.Run("read errors are returned", func(t *testing.T) {
+		t.Parallel()
+		readErr := errors.New("connection reset")
+		_, err := textplain.ConvertReader(iotest.ErrReader(readErr))
+		require.ErrorIs(t, err, readErr)
+	})
 }
 
 func TestMissingBody(t *testing.T) {

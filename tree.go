@@ -1,6 +1,7 @@
 package textplain
 
 import (
+	"io"
 	"strconv"
 	"strings"
 	"unicode"
@@ -60,7 +61,13 @@ type conversion struct {
 // DefaultLineLength unless an option says otherwise. It returns
 // ErrBodyNotFound if the document has no body.
 func Convert(document string, opts ...Option) (string, error) {
-	root, err := html.Parse(strings.NewReader(document))
+	return ConvertReader(strings.NewReader(document), opts...)
+}
+
+// ConvertReader is Convert for a document read from r, returning any error
+// from reading it.
+func ConvertReader(r io.Reader, opts ...Option) (string, error) {
+	root, err := html.Parse(r)
 	if err != nil {
 		return "", err
 	}
