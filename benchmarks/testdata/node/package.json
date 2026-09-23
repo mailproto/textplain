@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "dependencies": {
+    "html-to-text": "10.0.1"
+  }
+}
