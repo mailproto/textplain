@@ -30,12 +30,7 @@ func WordWrap(txt string, lineLength int) string {
 		)
 
 		for total-endRune > lineLength && startRune < total {
-			target := endRune + lineLength
-			if target >= total {
-				target = total - 1
-			} else if target < startRune {
-				target = startRune
-			}
+			target := max(endRune+lineLength, startRune)
 
 			for endRune < target {
 				_, size := utf8.DecodeRuneInString(line[end:])
