@@ -742,6 +742,31 @@ func TestHorizontalRule(t *testing.T) {
 	})
 }
 
+func TestAbbreviations(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "abbr expands its title",
+			body:   `<p><abbr title="HyperText Markup Language">HTML</abbr> mail</p>`,
+			expect: "HTML (HyperText Markup Language) mail",
+		},
+		testCase{
+			name:   "acronym expands its title",
+			body:   `<p><acronym title="As Soon As Possible">ASAP</acronym></p>`,
+			expect: "ASAP (As Soon As Possible)",
+		},
+		testCase{
+			name:   "no title",
+			body:   `<p><abbr>HTML</abbr></p>`,
+			expect: "HTML",
+		},
+		testCase{
+			name:   "title repeating the text",
+			body:   `<p><abbr title="html">HTML</abbr></p>`,
+			expect: "HTML",
+		},
+	)
+}
+
 func TestDefinitionLists(t *testing.T) {
 	runTestCases(t,
 		testCase{

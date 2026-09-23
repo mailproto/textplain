@@ -230,6 +230,17 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				o.write("\n\n")
 
 				continue
+			case atom.Abbr, atom.Acronym:
+				m := o.mark()
+				cv.doConvert(o, c)
+				text := o.take(m)
+				o.write(text)
+
+				if title := strings.TrimSpace(getAttr(c, "title")); title != "" && !strings.EqualFold(title, strings.TrimSpace(text)) {
+					o.write(" (" + title + ")")
+				}
+
+				continue
 			case atom.Br:
 				o.write("\n")
 
