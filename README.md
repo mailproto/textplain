@@ -13,13 +13,13 @@ go get github.com/mailproto/textplain
 ```go
 myHTML := `<html><body>Hello World</body></html>`
 
-myPlaintext, err := textplain.Convert(myHTML, textplain.DefaultLineLength)
+myPlaintext, err := textplain.Convert(myHTML)
 if err != nil {
 	// ErrBodyNotFound if the document has no body element
 }
 ```
 
-`DefaultLineLength` is 65. The word wrapping is exported for use on its own, and counts characters rather than bytes:
+Output wraps at `DefaultLineLength`, which is 65. The word wrapping is exported for use on its own, and counts characters rather than bytes:
 
 ```go
 wrapped := textplain.WordWrap("hello world, here is some text", 15)
@@ -29,11 +29,10 @@ Pass a line length of zero or less to skip wrapping entirely.
 
 ## Options
 
-`ConvertWithOptions` takes any number of options. With none it behaves like `Convert` at
-`DefaultLineLength`.
+`Convert` takes any number of options after the document.
 
 ```go
-myPlaintext, err := textplain.ConvertWithOptions(myHTML,
+myPlaintext, err := textplain.Convert(myHTML,
 	textplain.WithLinks(textplain.LinksFootnotes),
 	textplain.WithPlainHeadings(),
 )

@@ -31,6 +31,8 @@ const (
 	prePlaceholder = "\x06"
 )
 
+// TreeConverter converts documents by walking their parsed tree. It holds no
+// state, so one may be shared.
 type TreeConverter struct{}
 
 // conversion holds the state of a single Convert call. TreeConverter is shared,
@@ -40,10 +42,13 @@ type conversion struct {
 	links []string
 }
 
+// NewTreeConverter returns a TreeConverter.
 func NewTreeConverter() *TreeConverter {
 	return &TreeConverter{}
 }
 
+// Convert renders the body of document as plain text. It returns
+// ErrBodyNotFound if the document has no body.
 func (t *TreeConverter) Convert(document string, opts ...Option) (string, error) {
 	root, err := html.Parse(strings.NewReader(document))
 	if err != nil {
@@ -52,7 +57,7 @@ func (t *TreeConverter) Convert(document string, opts ...Option) (string, error)
 
 	cv := &conversion{opts: newOptions(opts)}
 
-	body := cv.findBody(root)
+	body := findBody(root)
 	if body == nil {
 		return "", ErrBodyNotFound
 	}
@@ -63,7 +68,7 @@ func (t *TreeConverter) Convert(document string, opts ...Option) (string, error)
 
 	preformatted, text := extractPre(o.String())
 
-	text = cv.fixSpacing(text)
+	text = fixSpacing(text)
 
 	if strings.Contains(text, horizontalRule) {
 		width := cv.opts.lineLength
@@ -109,13 +114,13 @@ func (cv *conversion) footnotes() string {
 	return out.String()
 }
 
-func (cv *conversion) findBody(n *html.Node) *html.Node {
+func findBody(n *html.Node) *html.Node {
 	if n.Type == html.ElementNode && n.DataAtom == atom.Body {
 		return n
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if body := cv.findBody(c); body != nil {
+		if body := findBody(c); body != nil {
 			return body
 		}
 	}
@@ -623,7 +628,7 @@ func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 	return nil, true
 }
 
-func (cv *conversion) fixSpacing(rt string) string {
+func fixSpacing(rt string) string {
 	first, firstSize := utf8.DecodeRuneInString(rt)
 	if firstSize == 0 {
 		return rt

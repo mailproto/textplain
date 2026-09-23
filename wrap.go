@@ -5,13 +5,9 @@ import (
 	"unicode/utf8"
 )
 
-// WordWrap searches for logical breakpoints in each line (whitespace) and tries to trim each
-// line to the specified length
-// Note: this diverges from the regex approach in premailer, which I found to be significantly
-// slower in cases with long unbroken lines
-// https://github.com/premailer/premailer/blob/7c94e7a/lib/premailer/html_to_plain_text.rb#L116
+// WordWrap breaks each line at spaces so that it fits within lineLength
+// characters. Zero or less does not wrap.
 func WordWrap(txt string, lineLength int) string {
-	// A line length of zero or less indicates no wrapping
 	if lineLength <= 0 {
 		return txt
 	}
@@ -66,7 +62,6 @@ func WordWrap(txt string, lineLength int) string {
 			endRune = startRune + utf8.RuneCountInString(line[prev:start])
 			end, startRune = start, endRune
 
-			// clear any extra space
 			for ; start < len(line) && line[start] == ' '; start++ {
 				startRune++
 			}

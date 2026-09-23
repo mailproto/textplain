@@ -1,11 +1,9 @@
-// textplain converts the HTML part of an email into a text/plain
-// compatible format
+// Package textplain converts the HTML part of an email into a text/plain
+// compatible format.
 package textplain
 
-// Defaults.
-const (
-	DefaultLineLength = 65
-)
+// DefaultLineLength is the wrap width used when no WithLineLength is given.
+const DefaultLineLength = 65
 
 var defaultConverter = NewTreeConverter()
 

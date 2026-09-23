@@ -16,14 +16,12 @@ func FuzzFixSpacing(f *testing.F) {
 		f.Add(seed)
 	}
 
-	var c conversion
-
 	f.Fuzz(func(t *testing.T, in string) {
 		if !utf8.ValidString(in) {
 			return
 		}
 
-		out := c.fixSpacing(in)
+		out := fixSpacing(in)
 
 		assert.True(t, utf8.ValidString(out), "output is not valid utf-8")
 		assert.LessOrEqual(t, len(out), len(in), "spacing only ever removes")
@@ -39,11 +37,9 @@ func FuzzFixSpacing(f *testing.F) {
 }
 
 func TestFixSpacingIsSingleAllocation(t *testing.T) {
-	var c conversion
-
 	input := strings.Repeat("Some text.  \n\n   * item\n\t* item\n\nMore    prose.\n", 200)
 
 	assert.Equal(t, 1.0, testing.AllocsPerRun(20, func() {
-		_ = c.fixSpacing(input)
+		_ = fixSpacing(input)
 	}))
 }
