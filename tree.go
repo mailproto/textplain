@@ -31,25 +31,16 @@ const (
 	prePlaceholder = "\x06"
 )
 
-// TreeConverter converts documents by walking their parsed tree. It holds no
-// state, so one may be shared.
-type TreeConverter struct{}
-
-// conversion holds the state of a single Convert call. TreeConverter is shared,
-// so nothing that varies per document may live on it.
+// conversion holds the state of a single Convert call.
 type conversion struct {
 	opts  options
 	links []string
 }
 
-// NewTreeConverter returns a TreeConverter.
-func NewTreeConverter() *TreeConverter {
-	return &TreeConverter{}
-}
-
-// Convert renders the body of document as plain text. It returns
+// Convert renders the body of document as plain text, wrapping at
+// DefaultLineLength unless an option says otherwise. It returns
 // ErrBodyNotFound if the document has no body.
-func (t *TreeConverter) Convert(document string, opts ...Option) (string, error) {
+func Convert(document string, opts ...Option) (string, error) {
 	root, err := html.Parse(strings.NewReader(document))
 	if err != nil {
 		return "", err
