@@ -187,14 +187,17 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				o.write("\n\n")
 
 				continue
-			case atom.Ul:
-				o.writeAll(nestedListBreak(n))
-				cv.listItems(o, c, cv.unordered)
+			case atom.Ul, atom.Ol:
+				if n.DataAtom == atom.Li {
+					o.write("\n")
+				}
 
-				continue
-			case atom.Ol:
-				o.writeAll(nestedListBreak(n))
-				cv.listItems(o, c, cv.ordered)
+				prefixer := cv.unordered
+				if c.DataAtom == atom.Ol {
+					prefixer = cv.ordered
+				}
+
+				cv.listItems(o, c, prefixer)
 
 				continue
 			case atom.Li:
@@ -311,7 +314,7 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 					href = href[len("mailto:"):]
 				}
 
-				o.writeAll(cv.link(text, href, containsImg(c)))
+				cv.link(o, text, href, containsImg(c))
 
 				continue
 			}
@@ -443,43 +446,47 @@ func textOf(n *html.Node) string {
 }
 
 // link renders an anchor according to the chosen style
-func (cv *conversion) link(text, href string, hasImg bool) []string {
+func (cv *conversion) link(o *output, text, href string, hasImg bool) {
 	switch cv.opts.links {
 	case LinksOmitted:
-		if text == "" {
-			return nil
+		if text != "" {
+			o.write(text)
 		}
 
-		return []string{text}
+		return
 
 	case LinksFootnotes:
 		if text == "" && !hasImg {
-			return nil
+			return
 		}
 
 		cv.links = append(cv.links, href)
-		marker := "[" + strconv.Itoa(len(cv.links)) + "]"
 
-		if text == "" {
-			return []string{marker}
+		if text != "" {
+			o.write(text)
+			o.write(" ")
 		}
 
-		return []string{text, " ", marker}
+		o.write("[")
+		o.write(strconv.Itoa(len(cv.links)))
+		o.write("]")
+
+		return
 	}
 
-	if sameTarget(text, href) {
-		return []string{href}
+	switch {
+	case sameTarget(text, href):
+		o.write(href)
+	case text != "":
+		o.write(text)
+		o.write(" ( ")
+		o.write(href)
+		o.write(" )")
+	case hasImg:
+		o.write("( ")
+		o.write(href)
+		o.write(" )")
 	}
-
-	if text == "" {
-		if hasImg {
-			return []string{"( " + href + " )"}
-		}
-
-		return nil
-	}
-
-	return []string{text, " ( ", href, " )"}
 }
 
 // sameTarget reports whether link text is just its href, give or take the scheme
@@ -577,14 +584,6 @@ func (cv *conversion) listItems(o *output, n *html.Node, prefixer func(int) stri
 			cv.doConvert(o, c)
 		}
 	}
-}
-
-func nestedListBreak(parent *html.Node) []string {
-	if parent != nil && parent.DataAtom == atom.Li {
-		return []string{"\n"}
-	}
-
-	return nil
 }
 
 func (cv *conversion) listItem(o *output, n *html.Node, prefix string) string {
