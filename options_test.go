@@ -82,6 +82,12 @@ func TestOptionsDefaultToTheDefaultLineLength(t *testing.T) {
 	}
 }
 
+func TestOptionsFootnotesSkipEmptyLinks(t *testing.T) {
+	result, err := textplain.Convert(`<p>text<a href="https://a.example"></a></p>`, textplain.WithLinks(textplain.LinksFootnotes))
+	require.NoError(t, err)
+	assert.Equal(t, "text", result)
+}
+
 func TestOptionsFootnotesOnlyWhenLinksExist(t *testing.T) {
 	result, err := textplain.Convert("<p>no links here</p>", textplain.WithLinks(textplain.LinksFootnotes))
 	require.NoError(t, err)

@@ -135,10 +135,6 @@ func findBody(n *html.Node) *html.Node {
 }
 
 func (cv *conversion) doConvert(o *output, n *html.Node) {
-	if n == nil {
-		return
-	}
-
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		switch c.Type {
 		case html.CommentNode:
@@ -401,23 +397,18 @@ func extractPre(text string) ([]string, string) {
 	)
 
 	for {
-		start := strings.Index(text, preOpen)
-		if start < 0 {
+		before, rest, found := strings.Cut(text, preOpen)
+		if !found {
 			break
 		}
 
-		end := strings.Index(text[start:], preClose)
-		if end < 0 {
-			break
-		}
+		block, after, _ := strings.Cut(rest, preClose)
 
-		end += start
-
-		out.WriteString(text[:start])
+		out.WriteString(before)
 		out.WriteString(prePlaceholder)
-		blocks = append(blocks, strings.Trim(text[start+len(preOpen):end], "\n"))
+		blocks = append(blocks, strings.Trim(block, "\n"))
 
-		text = text[end+len(preClose):]
+		text = after
 	}
 
 	out.WriteString(text)
@@ -442,10 +433,7 @@ func restorePre(text string, blocks []string) string {
 	out.Grow(size)
 
 	for _, block := range blocks {
-		before, after, found := strings.Cut(text, prePlaceholder)
-		if !found {
-			break
-		}
+		before, after, _ := strings.Cut(text, prePlaceholder)
 
 		out.WriteString(before)
 		out.WriteString(block)

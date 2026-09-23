@@ -358,6 +358,11 @@ func TestWrappingDoesntBreakWords(t *testing.T) {
 func TestImgAltTags(t *testing.T) {
 	runTestCases(t,
 		testCase{
+			name:   "img nested inside the link",
+			body:   `<a href="http://example.com/"><span><img src="http://example.ru/hello.jpg"></span></a>`,
+			expect: "( http://example.com/ )",
+		},
+		testCase{
 			name:   "self-closed img tag with alt value",
 			body:   `<a href="http://example.com/"><img src="http://example.ru/hello.jpg" alt="Example"/></a>`,
 			expect: "Example ( http://example.com/ )",
@@ -903,6 +908,11 @@ func TestHiddenContent(t *testing.T) {
 			expect: "shown",
 		},
 		testCase{
+			name:   "a trailing semicolon is not a declaration",
+			body:   `<p style="color:red;">shown</p>`,
+			expect: "shown",
+		},
+		testCase{
 			name:   "declarations are matched regardless of case or spacing",
 			body:   `<p>shown</p><p style="color:red; DISPLAY : NONE ;margin:0">hidden</p>`,
 			expect: "shown",
@@ -1115,6 +1125,11 @@ func TestPreformatted(t *testing.T) {
 			name:   "each block is restored in order",
 			body:   "<pre>one</pre><pre>  two</pre>",
 			expect: "one\n\n  two",
+		},
+		testCase{
+			name:   "line breaks inside are kept",
+			body:   "<pre>a<br>b</pre>",
+			expect: "a\nb",
 		},
 		testCase{
 			name:   "markup inside is taken as text",
