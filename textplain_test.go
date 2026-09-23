@@ -626,11 +626,18 @@ func TestStrippingComments(t *testing.T) {
 }
 
 func TestFixSpacing(t *testing.T) {
-	runTestCases(t, testCase{
-		name:   "ends in *",
-		body:   "<p>hello</p>*",
-		expect: "hello\n\n*",
-	})
+	runTestCases(t,
+		testCase{
+			name:   "ends in *",
+			body:   "<p>hello</p>*",
+			expect: "hello\n\n*",
+		},
+		testCase{
+			name:   "paragraphs starting with * keep their break",
+			body:   "<p>* one</p><p>* two</p>",
+			expect: "* one\n\n* two",
+		},
+	)
 }
 
 func TestMissingBody(t *testing.T) {
