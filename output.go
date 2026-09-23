@@ -56,10 +56,3 @@ func (o *output) take(m mark) string {
 
 	return taken
 }
-
-// writeAll writes each fragment in order.
-func (o *output) writeAll(parts []string) {
-	for _, p := range parts {
-		o.write(p)
-	}
-}
