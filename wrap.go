@@ -45,7 +45,7 @@ func WordWrap(txt string, lineLength int) string {
 
 			_, size := utf8.DecodeRuneInString(line[end:])
 
-			newIndex := strings.LastIndex(line[start:end+size], " ")
+			newIndex := keepBrackets(line[start:], strings.LastIndex(line[start:end+size], " "))
 			if newIndex <= 0 {
 				continue
 			}
@@ -76,4 +76,24 @@ func WordWrap(txt string, lineLength int) string {
 	}
 
 	return out.String()
+}
+
+// keepBrackets moves a break at i so that a lone "(" never ends a line and a
+// ")" never starts one, keeping link targets together
+func keepBrackets(s string, i int) int {
+	if i <= 0 {
+		return i
+	}
+
+	if strings.HasPrefix(strings.TrimLeft(s[i:], " "), ")") {
+		if i = strings.LastIndex(s[:i], " "); i <= 0 {
+			return i
+		}
+	}
+
+	if seg := s[:i]; seg == "(" || strings.HasSuffix(seg, " (") {
+		i = len(strings.TrimRight(seg[:len(seg)-1], " "))
+	}
+
+	return i
 }

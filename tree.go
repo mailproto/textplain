@@ -80,8 +80,6 @@ func (t *TreeConverter) Convert(document string, opts ...Option) (string, error)
 	}
 
 	wrapped := WordWrap(strings.TrimSpace(text), cv.opts.lineLength)
-	wrapped = strings.ReplaceAll(wrapped, "(\n", "\n( ") // XXX: cheap fix for wrapping open braces. move into WordWrap
-	wrapped = strings.ReplaceAll(wrapped, "\n)", " )\n") // XXX: cheap fix for wrapping closed braces. move into WordWrap
 
 	for _, block := range preformatted {
 		wrapped = strings.Replace(wrapped, prePlaceholder, block, 1)
