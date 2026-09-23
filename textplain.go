@@ -4,11 +4,3 @@ package textplain
 
 // DefaultLineLength is the wrap width used when no WithLineLength is given.
 const DefaultLineLength = 65
-
-var defaultConverter = NewTreeConverter()
-
-// Convert is a wrapper around the default converter singleton.
-// With no options it wraps at DefaultLineLength.
-func Convert(document string, opts ...Option) (string, error) {
-	return defaultConverter.Convert(document, opts...)
-}

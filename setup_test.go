@@ -46,9 +46,8 @@ const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "htt
 
 <img src="https://example.com/footer-animation.gif" /></body></html>`
 
-func BenchmarkTree(b *testing.B) {
-	converter := textplain.NewTreeConverter()
+func BenchmarkConvert(b *testing.B) {
 	for range b.N {
-		_, _ = converter.Convert(html)
+		_, _ = textplain.Convert(html)
 	}
 }
