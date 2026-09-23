@@ -3,6 +3,7 @@ package textplain
 import (
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/net/html"
@@ -230,6 +231,12 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				o.write("\n\n")
 
 				continue
+			case atom.Sub, atom.Sup:
+				m := o.mark()
+				cv.doConvert(o, c)
+				o.write(shifted(strings.TrimSpace(o.take(m)), c.DataAtom == atom.Sup))
+
+				continue
 			case atom.Br:
 				o.write("\n")
 
@@ -286,6 +293,24 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 
 		cv.doConvert(o, c)
 	}
+}
+
+// shifted marks sub and superscript text as _x and ^x. Symbols such as ® or †
+// read the same unmarked, so they are left alone.
+func shifted(text string, sup bool) string {
+	if !strings.ContainsFunc(text, func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }) {
+		return text
+	}
+
+	if strings.ContainsAny(text, " \t\n") {
+		text = "(" + text + ")"
+	}
+
+	if sup {
+		return "^" + text
+	}
+
+	return "_" + text
 }
 
 // applyQuotes turns the marked blockquote regions into a "> " prefix on every

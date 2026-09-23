@@ -742,6 +742,41 @@ func TestHorizontalRule(t *testing.T) {
 	})
 }
 
+func TestSubAndSuperscript(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "subscript",
+			body:   `<p>H<sub>2</sub>O</p>`,
+			expect: "H_2O",
+		},
+		testCase{
+			name:   "superscript",
+			body:   `<p>E = mc<sup>2</sup></p>`,
+			expect: "E = mc^2",
+		},
+		testCase{
+			name:   "several superscripts",
+			body:   `<p>x<sup>2</sup> + y<sup>2</sup></p>`,
+			expect: "x^2 + y^2",
+		},
+		testCase{
+			name:   "grouped when spaced",
+			body:   `<p>2<sup>n + 1</sup></p>`,
+			expect: "2^(n + 1)",
+		},
+		testCase{
+			name:   "symbols left unmarked",
+			body:   `<p>Acme<sup>&reg;</sup> Widget<sup>&dagger;</sup></p>`,
+			expect: "Acme® Widget†",
+		},
+		testCase{
+			name:   "empty",
+			body:   `<p>a<sup> </sup>b</p>`,
+			expect: "ab",
+		},
+	)
+}
+
 func TestDefinitionLists(t *testing.T) {
 	runTestCases(t,
 		testCase{
