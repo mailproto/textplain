@@ -9,20 +9,70 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ "1.25", "stable" ]
     steps:
     - uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version: "1.25"
+        go-version: ${{ matrix.go-version }}
+        cache-dependency-path: |
+          go.sum
+          benchmarks/go.sum
+
+    - name: Tidy
+      run: |
+        go mod tidy -diff
+        (cd benchmarks && go mod tidy -diff)
 
     - name: Build
       run: go build -v ./...
 
     - name: Test
-      run: go test -v ./...
+      run: go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Coverage
+      run: |
+        total=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}')
+        echo "coverage: $total"
+        [ "$total" = "100.0%" ] || { echo "coverage must be 100%"; exit 1; }
+
+    - name: Benchmarks module
+      working-directory: benchmarks
+      run: |
+        go vet ./...
+        go test -run TestFidelity ./...
+
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: golang/govulncheck-action@v1
+      with:
+        go-version-input: stable
+
+  fuzz:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [ FuzzWordWrap, FuzzFixSpacing ]
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: stable
+
+    - name: Fuzz
+      run: go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime 30s .
