@@ -17,6 +17,9 @@ func TestFidelity(t *testing.T) {
 		{"ol", `<ol><li>a</li><li>b</li></ol>`},
 		{"nested ul", `<ul><li>top<ul><li>child</li></ul></li></ul>`},
 		{"data table", `<table><tr><td>Jan</td><td>Feb</td></tr><tr><td>1</td><td>2</td></tr></table>`},
+		{"inline markup", `<p><b>bold</b>, <i>italic</i> and <code>x()</code></p>`},
+		{"line break", `<p>line one<br>line two</p>`},
+		{"literal markdown", `<p>1. not a list, *not* _emphasis_ [x] # no</p>`},
 		{"blockquote", `<blockquote>quoted</blockquote><p>after</p>`},
 		{"pre", "<pre>a\n  b</pre>"},
 		{"hr", `<p>a</p><hr/><p>b</p>`},
@@ -35,12 +38,12 @@ func TestFidelity(t *testing.T) {
 
 			out, err := impl.fn(p.html)
 			if err != nil {
-				fmt.Printf("  %-18s ERROR %v\n", impl.name, err)
+				fmt.Printf("  %-26s ERROR %v\n", impl.name, err)
 
 				continue
 			}
 
-			fmt.Printf("  %-18s %q\n", impl.name, strings.TrimSpace(out))
+			fmt.Printf("  %-26s %q\n", impl.name, strings.TrimSpace(out))
 		}
 	}
 }

@@ -12,6 +12,11 @@ go test -run TestFidelity -v .    # what each implementation actually produces
 is roughly the least work any parser-based implementation could do, and is there to show how much
 of the runtime belongs to `html.Parse` rather than to conversion.
 
+Rows prefixed `md_` are Go libraries that produce Markdown rather than plain text:
+[JohannesKaufmann/html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown) v2, with and
+without its table plugin, its v1 fork [firecrawl/html-to-markdown](https://github.com/firecrawl/html-to-markdown),
+and [mattn/godown](https://github.com/mattn/godown). Each converter is built once and reused.
+
 ## Other languages
 
 Libraries in other languages run as long-lived workers under `testdata/`, fed documents over
