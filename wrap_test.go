@@ -111,3 +111,19 @@ func stripWhitespace(s string) string {
 		return r
 	}, s)
 }
+
+func BenchmarkWordWrap(b *testing.B) {
+	for name, txt := range map[string]string{
+		"prose":       strings.Repeat("The quick brown fox jumps over the lazy dog (see https://example.com/a/b). ", 200),
+		"smartquotes": strings.Repeat("The quick brown fox’s jumps over the lazy dog (see https://example.com/a/b). ", 200),
+		"multibyte":   strings.Repeat("日本語 の テキスト áb éé ", 400),
+		"unbroken":    strings.Repeat("x", 20000),
+		"lines":       strings.Repeat("short line\n", 2000),
+	} {
+		b.Run(name, func(b *testing.B) {
+			for range b.N {
+				textplain.WordWrap(txt, textplain.DefaultLineLength)
+			}
+		})
+	}
+}
