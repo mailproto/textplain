@@ -252,6 +252,11 @@ func TestStrippingHTML(t *testing.T) {
 			<p>text</p>`,
 			expect: "test\n\ntext",
 		},
+		testCase{
+			name:   "inline markup",
+			body:   "<p><b>bold</b> <em>em</em> <code>*x*</code></p>",
+			expect: "bold em *x*",
+		},
 	)
 }
 

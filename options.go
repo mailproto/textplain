@@ -25,6 +25,7 @@ type options struct {
 	orderedSuffix string
 	links         LinkStyle
 	plainHeadings bool
+	markdown      bool
 }
 
 func newOptions(opts []Option) options {
@@ -36,6 +37,11 @@ func newOptions(opts []Option) options {
 
 	for _, apply := range opts {
 		apply(&o)
+	}
+
+	// wrapping could start a line with something that reads as markup
+	if o.markdown {
+		o.lineLength = 0
 	}
 
 	return o
@@ -66,4 +72,11 @@ func WithLinks(style LinkStyle) Option {
 // WithPlainHeadings leaves off the rule characters drawn around headings.
 func WithPlainHeadings() Option {
 	return func(o *options) { o.plainHeadings = true }
+}
+
+// WithMarkdown renders CommonMark instead of plain text. Output is not wrapped,
+// so WithLineLength and WithPlainHeadings have no effect, and any WithBullet or
+// WithOrderedSuffix must be a Markdown list marker.
+func WithMarkdown() Option {
+	return func(o *options) { o.markdown = true }
 }
