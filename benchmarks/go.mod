@@ -1,6 +1,6 @@
 module github.com/mailproto/textplain/benchmarks
 
-go 1.25.0
+go 1.26.0
 
 replace github.com/mailproto/textplain => ../
 
@@ -11,7 +11,7 @@ require (
 	github.com/k3a/html2text v1.5.0
 	github.com/mailproto/textplain v0.4.0
 	github.com/mattn/godown v0.0.1
-	golang.org/x/net v0.55.0
+	golang.org/x/net v0.59.0
 )
 
 require (
@@ -30,5 +30,5 @@ require (
 	github.com/olekukonko/ll v0.1.6 // indirect
 	github.com/olekukonko/tablewriter v1.1.5 // indirect
 	github.com/ssor/bom v0.0.0-20170718123548-6386211fdfcf // indirect
-	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 )
