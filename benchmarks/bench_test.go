@@ -85,6 +85,7 @@ var implementations = []implementation{
 	{"k3a_lists", false, func(d string) (string, error) {
 		return k3a.HTML2TextWithOptions(d, k3a.WithListSupport()), nil
 	}},
+	{"textplain_markdown", false, func(d string) (string, error) { return textplain.Convert(d, textplain.WithMarkdown()) }},
 	{"md_johanneskaufmann", false, func(d string) (string, error) { return jkConverter.ConvertString(d) }},
 	{"md_johanneskaufmann_tables", false, func(d string) (string, error) { return jkTableConverter.ConvertString(d) }},
 	{"md_firecrawl", false, fcConverter.ConvertString},

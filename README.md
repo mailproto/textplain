@@ -47,6 +47,7 @@ myPlaintext, err := textplain.Convert(myHTML,
 | `WithOrderedSuffix(suffix)` | `". "` after the number on ordered list items |
 | `WithLinks(style)` | `LinksInline` |
 | `WithPlainHeadings()` | off, so headings are drawn with rule characters |
+| `WithMarkdown()` | off; renders CommonMark instead of plain text |
 
 Later options win, so a caller can layer its own on top of a shared set.
 
@@ -66,3 +67,9 @@ Read the Docs [1] or the changelog [2].
 [1] https://example.com
 [2] https://example.com/changelog
 ```
+
+## Markdown
+
+`WithMarkdown` renders the same content as CommonMark: `#` headings, `**bold**` and `*italic*`, code spans and fences, `![alt](src)` images and `[text](url)` links, or reference links with `LinksFootnotes`. Text that would otherwise read as markup is escaped. Layout tables are flattened as in plain text, with each row ending in a hard break.
+
+Markdown output is never wrapped, so `WithLineLength` and `WithPlainHeadings` have no effect.

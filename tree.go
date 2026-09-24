@@ -30,6 +30,11 @@ const (
 	preOpen        = "\x04"
 	preClose       = "\x05"
 	prePlaceholder = "\x06"
+
+	// Markdown only: a <br> that becomes a hard break unless a blank line follows,
+	// and text that needs a backslash if it lands at the start of a line
+	hardBreak     = "\x07"
+	lineStartMark = "\x08"
 )
 
 // withoutMarkers drops marker bytes, where raw control characters and entities
@@ -37,9 +42,9 @@ const (
 // cannot match inside a multi-byte rune.
 func withoutMarkers(s string) string {
 	for i := 0; i < len(s); i++ {
-		if s[i] <= '\x06' {
+		if s[i] <= '\x08' {
 			return strings.Map(func(r rune) rune {
-				if r <= '\x06' {
+				if r <= '\x08' {
 					return -1
 				}
 
@@ -87,6 +92,10 @@ func ConvertReader(r io.Reader, opts ...Option) (string, error) {
 
 	text = fixSpacing(text)
 
+	if cv.opts.markdown {
+		text = settleMarkdown(text)
+	}
+
 	if strings.Contains(text, horizontalRule) {
 		width := cv.opts.lineLength
 		if width <= 0 {
@@ -116,8 +125,14 @@ func (cv *conversion) footnotes() string {
 	for i, href := range cv.links {
 		out.WriteString("[")
 		out.WriteString(strconv.Itoa(i + 1))
-		out.WriteString("] ")
-		out.WriteString(href)
+
+		if cv.opts.markdown {
+			out.WriteString("]: ")
+			out.WriteString(destination(href))
+		} else {
+			out.WriteString("] ")
+			out.WriteString(href)
+		}
 
 		if i < len(cv.links)-1 {
 			out.WriteString("\n")
@@ -162,7 +177,7 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				continue
 			}
 
-			o.write(withoutMarkers(c.Data))
+			o.write(cv.text(c.Data))
 		case html.ElementNode:
 			switch c.DataAtom {
 			// none of these render their text as document content: the media and
@@ -224,7 +239,7 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				continue
 			case atom.Tr:
 				cv.doConvert(o, c)
-				o.write("\n")
+				cv.lineBreak(o)
 
 				continue
 			case atom.Span:
@@ -251,7 +266,13 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 			case atom.Pre:
 				o.write("\n\n")
 				o.write(preOpen)
-				o.write(textOf(c))
+
+				if cv.opts.markdown {
+					o.write(fenced(textOf(c)))
+				} else {
+					o.write(textOf(c))
+				}
+
 				o.write(preClose)
 				o.write("\n\n")
 
@@ -259,7 +280,12 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 			case atom.Sub, atom.Sup:
 				m := o.mark()
 				cv.doConvert(o, c)
-				o.write(shifted(strings.TrimSpace(o.take(m)), c.DataAtom == atom.Sup))
+				text := shifted(strings.TrimSpace(o.take(m)), c.DataAtom == atom.Sup)
+				if cv.opts.markdown && strings.HasPrefix(text, "_") {
+					text = `\` + text
+				}
+
+				o.write(text)
 
 				continue
 			case atom.Abbr, atom.Acronym:
@@ -269,12 +295,35 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				o.write(text)
 
 				if title := strings.TrimSpace(getAttr(c, "title")); title != "" && !strings.EqualFold(title, strings.TrimSpace(text)) {
-					o.write(" (" + title + ")")
+					o.write(" (" + cv.escape(title) + ")")
 				}
 
 				continue
 			case atom.Br:
-				o.write("\n")
+				cv.lineBreak(o)
+
+				continue
+			case atom.Code:
+				if !cv.opts.markdown {
+					break
+				}
+
+				o.write(codeSpan(textOf(c)))
+
+				continue
+			case atom.B, atom.Strong, atom.I, atom.Em:
+				if !cv.opts.markdown {
+					break
+				}
+
+				delim := "*"
+				if c.DataAtom == atom.B || c.DataAtom == atom.Strong {
+					delim = "**"
+				}
+
+				m := o.mark()
+				cv.doConvert(o, c)
+				o.write(emphasized(o.take(m), delim))
 
 				continue
 			case atom.Hr:
@@ -296,8 +345,14 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 
 				continue
 			case atom.Img:
-				if alt := getAttr(c, "alt"); alt != "" {
-					o.write(strings.TrimSpace(alt))
+				alt := strings.TrimSpace(getAttr(c, "alt"))
+
+				switch src := strings.TrimSpace(getAttr(c, "src")); {
+				case alt == "":
+				case cv.opts.markdown && src != "":
+					o.write("![" + cv.escape(oneLine(alt)) + "](" + destination(src) + ")")
+				default:
+					o.write(cv.escape(alt))
 				}
 
 				continue
@@ -316,10 +371,11 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 
 				text := strings.TrimSpace(more)
 				if text == "" {
-					text = strings.TrimSpace(getAttr(c, "alt"))
+					text = cv.escape(strings.TrimSpace(getAttr(c, "alt")))
 				}
 
-				if len(href) >= len("mailto:") && strings.EqualFold(href[:len("mailto:")], "mailto:") {
+				// Markdown needs the scheme, or the address reads as a relative link
+				if !cv.opts.markdown && len(href) >= len("mailto:") && strings.EqualFold(href[:len("mailto:")], "mailto:") {
 					href = href[len("mailto:"):]
 				}
 
@@ -478,8 +534,36 @@ func textOf(n *html.Node) string {
 	return sb.String()
 }
 
+// text makes the content of a text node or attribute safe to write
+func (cv *conversion) text(s string) string {
+	return cv.escape(withoutMarkers(s))
+}
+
+func (cv *conversion) escape(s string) string {
+	if cv.opts.markdown {
+		return escapeMarkdown(s)
+	}
+
+	return s
+}
+
+// lineBreak ends a line within a block
+func (cv *conversion) lineBreak(o *output) {
+	if cv.opts.markdown {
+		o.write(hardBreak)
+	}
+
+	o.write("\n")
+}
+
 // link renders an anchor according to the chosen style
 func (cv *conversion) link(o *output, text, href string, hasImg bool) {
+	if cv.opts.markdown && cv.opts.links != LinksOmitted {
+		cv.markdownLink(o, text, href, hasImg)
+
+		return
+	}
+
 	switch cv.opts.links {
 	case LinksOmitted:
 		if text != "" {
@@ -522,6 +606,35 @@ func (cv *conversion) link(o *output, text, href string, hasImg bool) {
 	}
 }
 
+// markdownLink writes an inline or reference link, falling back to the target as
+// the text when an image inside the link has no alt
+func (cv *conversion) markdownLink(o *output, text, href string, hasImg bool) {
+	if text == "" && !hasImg {
+		return
+	}
+
+	if text == "" {
+		text = escapeMarkdown(href)
+	}
+
+	o.write("[")
+	o.write(oneLine(text))
+
+	if cv.opts.links == LinksFootnotes {
+		cv.links = append(cv.links, href)
+
+		o.write("][")
+		o.write(strconv.Itoa(len(cv.links)))
+		o.write("]")
+
+		return
+	}
+
+	o.write("](")
+	o.write(destination(href))
+	o.write(")")
+}
+
 // sameTarget reports whether link text is just its href, give or take the scheme
 // and a trailing slash
 func sameTarget(text, href string) bool {
@@ -555,6 +668,18 @@ func (cv *conversion) headerBlock(o *output, n *html.Node, blockChar string, pre
 	m := o.mark()
 	cv.doConvert(o, n)
 	headerText := strings.TrimSpace(o.take(m))
+
+	if cv.opts.markdown {
+		if headerText = oneLine(headerText); headerText != "" {
+			o.write("\n\n")
+			o.write(strings.Repeat("#", int(n.Data[1]-'0')))
+			o.write(" ")
+			o.write(headerText)
+			o.write("\n\n")
+		}
+
+		return
+	}
 
 	if cv.opts.plainHeadings {
 		o.write("\n\n")
@@ -629,6 +754,13 @@ func (cv *conversion) listItem(o *output, n *html.Node, prefix string) string {
 	// level further in; marks already present deepen as they bubble up
 	first, nested, _ := strings.Cut(content, "\n")
 
+	// Markdown nests under the item's content, so the indent covers the whole marker
+	indent := indentMark
+	if cv.opts.markdown {
+		first = escapeLead(strings.TrimLeft(first, " \t"))
+		indent = strings.Repeat(indentMark, (utf8.RuneCountInString(prefix)+1)/2)
+	}
+
 	var out strings.Builder
 
 	out.WriteString(strings.TrimSpace(prefix + first))
@@ -639,7 +771,7 @@ func (cv *conversion) listItem(o *output, n *html.Node, prefix string) string {
 			continue
 		}
 
-		out.WriteString(indentMark)
+		out.WriteString(indent)
 		out.WriteString(strings.TrimLeft(line, " \t"))
 		out.WriteString("\n")
 	}
@@ -669,7 +801,7 @@ func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 			cv.doConvert(o, c)
 			span = o.take(m)
 		case html.TextNode:
-			span = withoutMarkers(c.Data)
+			span = cv.text(c.Data)
 		}
 
 		if trimmed := strings.TrimRight(span, "\n\t "); len(trimmed) != len(span) {
