@@ -1,15 +1,22 @@
 package benchmarks
 
 import (
+	"bytes"
 	"embed"
 	"io/fs"
 	"sort"
 	"strings"
 	"testing"
 
+	jk "github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	jkbase "github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
+	jkcommonmark "github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
+	jktable "github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
+	firecrawl "github.com/firecrawl/html-to-markdown"
 	jaytaylor "github.com/jaytaylor/html2text"
 	k3a "github.com/k3a/html2text"
 	"github.com/mailproto/textplain"
+	"github.com/mattn/godown"
 	"golang.org/x/net/html"
 )
 
@@ -60,6 +67,13 @@ func textNodesOnly(doc string) (string, error) {
 	return sb.String(), nil
 }
 
+// Converters are built once, as a caller converting many documents would.
+var (
+	jkConverter      = jk.NewConverter(jk.WithPlugins(jkbase.NewBasePlugin(), jkcommonmark.NewCommonmarkPlugin()))
+	jkTableConverter = jk.NewConverter(jk.WithPlugins(jkbase.NewBasePlugin(), jkcommonmark.NewCommonmarkPlugin(), jktable.NewTablePlugin()))
+	fcConverter      = firecrawl.NewConverter("", true, nil)
+)
+
 var implementations = []implementation{
 	{"textplain", true, func(d string) (string, error) { return textplain.Convert(d) }},
 	{"textplain_nowrap", false, func(d string) (string, error) { return textplain.Convert(d, textplain.WithLineLength(0)) }},
@@ -70,6 +84,15 @@ var implementations = []implementation{
 	{"k3a", false, func(d string) (string, error) { return k3a.HTML2Text(d), nil }},
 	{"k3a_lists", false, func(d string) (string, error) {
 		return k3a.HTML2TextWithOptions(d, k3a.WithListSupport()), nil
+	}},
+	{"md_johanneskaufmann", false, func(d string) (string, error) { return jkConverter.ConvertString(d) }},
+	{"md_johanneskaufmann_tables", false, func(d string) (string, error) { return jkTableConverter.ConvertString(d) }},
+	{"md_firecrawl", false, fcConverter.ConvertString},
+	{"md_godown", false, func(d string) (string, error) {
+		var out bytes.Buffer
+		err := godown.Convert(&out, strings.NewReader(d), nil)
+
+		return out.String(), err
 	}},
 	{"parse_floor", false, textNodesOnly},
 }
