@@ -58,8 +58,9 @@ func withoutMarkers(s string) string {
 
 // conversion holds the state of a single Convert call.
 type conversion struct {
-	opts  options
-	links []string
+	opts       options
+	links      []string
+	showHidden bool
 }
 
 // Convert renders the body of document as plain text, wrapping at
@@ -77,13 +78,24 @@ func ConvertReader(r io.Reader, opts ...Option) (string, error) {
 		return "", err
 	}
 
-	cv := &conversion{opts: newOptions(opts)}
-
 	body := findBody(root)
 	if body == nil {
 		return "", ErrBodyNotFound
 	}
 
+	cv := &conversion{opts: newOptions(opts)}
+
+	text := cv.convert(body)
+	if text == "" {
+		// hiding is guessed from inline styles, and a wrong guess must not empty the message
+		cv = &conversion{opts: cv.opts, showHidden: true}
+		text = cv.convert(body)
+	}
+
+	return text, nil
+}
+
+func (cv *conversion) convert(body *html.Node) string {
 	var o output
 
 	cv.doConvert(&o, body)
@@ -109,7 +121,7 @@ func ConvertReader(r io.Reader, opts ...Option) (string, error) {
 
 	wrapped = restorePre(wrapped, preformatted)
 
-	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")) + cv.footnotes(), nil
+	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")) + cv.footnotes()
 }
 
 // footnotes lists the collected link targets under the body
@@ -190,7 +202,7 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				continue
 			}
 
-			if isHidden(c) {
+			if cv.isHidden(c) {
 				continue
 			}
 
@@ -730,7 +742,7 @@ func (cv *conversion) listItems(o *output, n *html.Node, prefixer func(int) stri
 	idx := listStart(n)
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if c.Type == html.ElementNode && isHidden(c) {
+		if c.Type == html.ElementNode && cv.isHidden(c) {
 			continue
 		}
 
@@ -789,7 +801,7 @@ func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 			return c.PrevSibling, false
 		}
 
-		if c.Type == html.ElementNode && isHidden(c) {
+		if c.Type == html.ElementNode && cv.isHidden(c) {
 			continue
 		}
 
@@ -873,7 +885,11 @@ func isPreheaderMark(r rune) bool {
 
 // isHidden reports whether an element is kept out of the rendered message.
 // Preheader text meant only for the inbox preview is the usual case.
-func isHidden(n *html.Node) bool {
+func (cv *conversion) isHidden(n *html.Node) bool {
+	if cv.showHidden {
+		return false
+	}
+
 	for _, a := range n.Attr {
 		switch a.Key {
 		case "hidden":
@@ -892,7 +908,11 @@ func isHidden(n *html.Node) bool {
 	return false
 }
 
+// font-size:0 is left out: it is inherited and descendants reset it, as in the
+// inline-block gap fix that wraps whole layouts
 func hiddenByStyle(style string) bool {
+	var zeroHeight, overflowHidden bool
+
 	for declaration := range strings.SplitSeq(style, ";") {
 		property, value, ok := strings.Cut(declaration, ":")
 		if !ok {
@@ -911,14 +931,18 @@ func hiddenByStyle(style string) bool {
 			if value == "hidden" || value == "collapse" {
 				return true
 			}
-		case "opacity", "font-size", "max-height":
+		case "opacity":
 			if isZeroValue(value) {
 				return true
 			}
+		case "max-height":
+			zeroHeight = isZeroValue(value)
+		case "overflow", "overflow-y":
+			overflowHidden = value == "hidden"
 		}
 	}
 
-	return false
+	return zeroHeight && overflowHidden
 }
 
 // isZeroValue reports whether a css number or length is zero, with or without a unit,
