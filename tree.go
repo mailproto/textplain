@@ -58,14 +58,17 @@ func withoutMarkers(s string) string {
 
 // conversion holds the state of a single Convert call.
 type conversion struct {
-	opts       options
-	links      []string
-	showHidden bool
+	opts  options
+	links []string
 }
 
 // Convert renders the body of document as plain text, wrapping at
 // DefaultLineLength unless an option says otherwise. It returns
 // ErrBodyNotFound if the document has no body.
+//
+// The result is empty when the body has no visible text, which can mean
+// hidden content was misjudged; callers that need text can retry with
+// WithHiddenContent.
 func Convert(document string, opts ...Option) (string, error) {
 	return ConvertReader(strings.NewReader(document), opts...)
 }
@@ -85,17 +88,6 @@ func ConvertReader(r io.Reader, opts ...Option) (string, error) {
 
 	cv := &conversion{opts: newOptions(opts)}
 
-	text := cv.convert(body)
-	if text == "" {
-		// hiding is guessed from inline styles, and a wrong guess must not empty the message
-		cv = &conversion{opts: cv.opts, showHidden: true}
-		text = cv.convert(body)
-	}
-
-	return text, nil
-}
-
-func (cv *conversion) convert(body *html.Node) string {
 	var o output
 
 	cv.doConvert(&o, body)
@@ -121,7 +113,7 @@ func (cv *conversion) convert(body *html.Node) string {
 
 	wrapped = restorePre(wrapped, preformatted)
 
-	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")) + cv.footnotes()
+	return applyQuotes(strings.ReplaceAll(wrapped, indentMark, "  ")) + cv.footnotes(), nil
 }
 
 // footnotes lists the collected link targets under the body
@@ -886,7 +878,7 @@ func isPreheaderMark(r rune) bool {
 // isHidden reports whether an element is kept out of the rendered message.
 // Preheader text meant only for the inbox preview is the usual case.
 func (cv *conversion) isHidden(n *html.Node) bool {
-	if cv.showHidden {
+	if cv.opts.hiddenContent {
 		return false
 	}
 

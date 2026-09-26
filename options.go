@@ -26,6 +26,7 @@ type options struct {
 	links         LinkStyle
 	plainHeadings bool
 	markdown      bool
+	hiddenContent bool
 }
 
 func newOptions(opts []Option) options {
@@ -72,6 +73,12 @@ func WithLinks(style LinkStyle) Option {
 // WithPlainHeadings leaves off the rule characters drawn around headings.
 func WithPlainHeadings() Option {
 	return func(o *options) { o.plainHeadings = true }
+}
+
+// WithHiddenContent keeps content that inline styles or attributes hide, such
+// as preheaders.
+func WithHiddenContent() Option {
+	return func(o *options) { o.hiddenContent = true }
 }
 
 // WithMarkdown renders CommonMark instead of plain text. Output is not wrapped,

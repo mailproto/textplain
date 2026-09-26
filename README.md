@@ -48,8 +48,11 @@ myPlaintext, err := textplain.Convert(myHTML,
 | `WithLinks(style)` | `LinksInline` |
 | `WithPlainHeadings()` | off, so headings are drawn with rule characters |
 | `WithMarkdown()` | off; renders CommonMark instead of plain text |
+| `WithHiddenContent()` | off, so content hidden by inline styles or attributes is dropped |
 
 Later options win, so a caller can layer its own on top of a shared set.
+
+Hidden content is judged from inline styles, so a layout can occasionally convert to an empty string. Callers that need text can retry with `WithHiddenContent()`.
 
 `WithLinks` takes one of three styles:
 

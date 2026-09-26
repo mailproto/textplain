@@ -1007,11 +1007,6 @@ func TestHiddenContent(t *testing.T) {
 			expect: "still visible",
 		},
 		testCase{
-			name:   "everything hidden falls back to showing it",
-			body:   `<div style="display:none"><p>only content</p></div>`,
-			expect: "only content",
-		},
-		testCase{
 			name:   "aria-hidden false stays visible",
 			body:   `<p>shown</p><p aria-hidden="false">still visible</p>`,
 			expect: "shown\n\nstill visible",
