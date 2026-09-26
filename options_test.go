@@ -82,6 +82,18 @@ func TestOptionsDefaultToTheDefaultLineLength(t *testing.T) {
 	}
 }
 
+func TestOptionsHiddenContent(t *testing.T) {
+	body := `<div style="display:none"><p>only content</p></div>`
+
+	result, err := textplain.Convert(body)
+	require.NoError(t, err)
+	assert.Empty(t, result)
+
+	result, err = textplain.Convert(body, textplain.WithHiddenContent())
+	require.NoError(t, err)
+	assert.Equal(t, "only content", result)
+}
+
 func TestOptionsFootnotesSkipEmptyLinks(t *testing.T) {
 	result, err := textplain.Convert(`<p>text<a href="https://a.example"></a></p>`, textplain.WithLinks(textplain.LinksFootnotes))
 	require.NoError(t, err)

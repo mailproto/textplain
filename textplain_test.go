@@ -951,13 +951,8 @@ func TestHiddenContent(t *testing.T) {
 			expect: "shown",
 		},
 		testCase{
-			name:   "zero font size with a unit",
-			body:   `<p>shown</p><p style="font-size:0px">hidden</p>`,
-			expect: "shown",
-		},
-		testCase{
-			name:   "zero max height",
-			body:   `<p>shown</p><p style="max-height:0">hidden</p>`,
+			name:   "zero max height with overflow hidden",
+			body:   `<p>shown</p><p style="max-height:0px;overflow:hidden">hidden</p>`,
 			expect: "shown",
 		},
 		testCase{
@@ -1000,6 +995,16 @@ func TestHiddenContent(t *testing.T) {
 			name:   "fractional font size stays visible",
 			body:   `<p>shown</p><p style="font-size:0.9em">still visible</p>`,
 			expect: "shown\n\nstill visible",
+		},
+		testCase{
+			name:   "zero font size container with sized children stays visible",
+			body:   `<div style="font-size:0"><table style="display:inline-block"><tr><td style="font-size:16px">still visible</td></tr></table></div>`,
+			expect: "still visible",
+		},
+		testCase{
+			name:   "zero max height without overflow hidden stays visible",
+			body:   `<div style="max-height:0"><p>still visible</p></div>`,
+			expect: "still visible",
 		},
 		testCase{
 			name:   "aria-hidden false stays visible",
