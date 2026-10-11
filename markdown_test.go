@@ -95,10 +95,10 @@ func TestMarkdown(t *testing.T) {
 		},
 		{
 			name:     "links as footnotes",
-			body:     `<p>See <a href="https://a">one</a> and <a href="https://b c">two</a></p>`,
+			body:     `<p>See <a href="https://a">one</a> and <a href="https://b c">two</a> and <a href="https://a">again</a></p>`,
 			opts:     []textplain.Option{textplain.WithLinks(textplain.LinksFootnotes)},
-			markdown: "See [one][1] and [two][2]\n\n[1]: https://a\n[2]: <https://b c>",
-			rendered: `<p>See <a href="https://a">one</a> and <a href="https://b%20c">two</a></p>`,
+			markdown: "See [one][1] and [two][2] and [again][1]\n\n[1]: https://a\n[2]: <https://b c>",
+			rendered: `<p>See <a href="https://a">one</a> and <a href="https://b%20c">two</a> and <a href="https://a">again</a></p>`,
 		},
 		{
 			name:     "links omitted",

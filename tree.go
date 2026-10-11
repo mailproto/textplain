@@ -2,6 +2,7 @@ package textplain
 
 import (
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -581,15 +582,13 @@ func (cv *conversion) link(o *output, text, href string, hasImg bool) {
 			return
 		}
 
-		cv.links = append(cv.links, href)
-
 		if text != "" {
 			o.write(text)
 			o.write(" ")
 		}
 
 		o.write("[")
-		o.write(strconv.Itoa(len(cv.links)))
+		o.write(strconv.Itoa(cv.footnote(href)))
 		o.write("]")
 
 		return
@@ -610,6 +609,18 @@ func (cv *conversion) link(o *output, text, href string, hasImg bool) {
 	}
 }
 
+// footnote numbers a link target, reusing the number of a target seen before
+// ponytail: linear scan, fine for the links in an email; index by map if documents get huge
+func (cv *conversion) footnote(href string) int {
+	if i := slices.Index(cv.links, href); i >= 0 {
+		return i + 1
+	}
+
+	cv.links = append(cv.links, href)
+
+	return len(cv.links)
+}
+
 // markdownLink writes an inline or reference link, falling back to the target as
 // the text when an image inside the link has no alt
 func (cv *conversion) markdownLink(o *output, text, href string, hasImg bool) {
@@ -625,10 +636,8 @@ func (cv *conversion) markdownLink(o *output, text, href string, hasImg bool) {
 	o.write(oneLine(text))
 
 	if cv.opts.links == LinksFootnotes {
-		cv.links = append(cv.links, href)
-
 		o.write("][")
-		o.write(strconv.Itoa(len(cv.links)))
+		o.write(strconv.Itoa(cv.footnote(href)))
 		o.write("]")
 
 		return
