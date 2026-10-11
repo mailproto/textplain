@@ -913,6 +913,7 @@ func hiddenByStyle(style string) bool {
 
 		property = strings.ToLower(strings.TrimSpace(property))
 		value = strings.ToLower(strings.TrimSpace(value))
+		value = strings.TrimSpace(strings.TrimSuffix(value, "!important"))
 
 		switch property {
 		case "display":
