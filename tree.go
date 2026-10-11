@@ -639,8 +639,8 @@ func (cv *conversion) markdownLink(o *output, text, href string, hasImg bool) {
 	o.write(")")
 }
 
-// sameTarget reports whether link text is just its href, give or take the scheme
-// and a trailing slash
+// sameTarget reports whether link text is just its href, give or take the scheme,
+// a trailing slash and case
 func sameTarget(text, href string) bool {
 	trim := func(s string) string {
 		s = strings.TrimSuffix(s, "/")
@@ -651,7 +651,7 @@ func sameTarget(text, href string) bool {
 		return s
 	}
 
-	return text != "" && trim(text) == trim(href)
+	return text != "" && strings.EqualFold(trim(text), trim(href))
 }
 
 func containsImg(n *html.Node) bool {
