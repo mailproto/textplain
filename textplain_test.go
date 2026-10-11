@@ -430,6 +430,11 @@ func TestLinks(t *testing.T) {
 			expect: `http://example.com`,
 		},
 		testCase{
+			name:   "text is the href in another case",
+			body:   `<a href="https://Example.com/">example.com</a>`,
+			expect: `https://Example.com/`,
+		},
+		testCase{
 			name:   "text differs from the href by more than the scheme",
 			body:   `<a href="http://example.com/a">example.com</a>`,
 			expect: `example.com ( http://example.com/a )`,
