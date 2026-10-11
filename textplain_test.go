@@ -987,6 +987,11 @@ func TestHiddenContent(t *testing.T) {
 		},
 		// values near zero are not zero
 		testCase{
+			name:   "important declarations",
+			body:   `<p>shown</p><p style="display:none!important">a</p><p style="DISPLAY: NONE !IMPORTANT">b</p><p style="max-height:0 !important; overflow:hidden !important">c</p>`,
+			expect: "shown",
+		},
+		testCase{
 			name:   "fractional opacity stays visible",
 			body:   `<p>shown</p><p style="opacity:0.5">still visible</p>`,
 			expect: "shown\n\nstill visible",
