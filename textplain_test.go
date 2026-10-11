@@ -542,6 +542,11 @@ func TestLinks(t *testing.T) {
 			expect: `Top`,
 		},
 		testCase{
+			name:   "script link keeps just its text",
+			body:   `<a href="javascript:void(0)">Open</a> <a href=" JavaScript:go()">Go</a>`,
+			expect: `Open Go`,
+		},
+		testCase{
 			name:   "a fragment on a real url is still a link",
 			body:   `<a href="http://example.com/page#frag">Deep</a>`,
 			expect: `Deep ( http://example.com/page#frag )`,
