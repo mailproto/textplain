@@ -695,7 +695,7 @@ func (cv *conversion) headerBlock(o *output, n *html.Node, blockChar string, pre
 
 	var maxSize int
 	for line := range strings.SplitSeq(headerText, "\n") {
-		if l := len(strings.TrimSpace(line)); l > maxSize {
+		if l := utf8.RuneCountInString(strings.TrimSpace(line)); l > maxSize {
 			maxSize = l
 		}
 	}

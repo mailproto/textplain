@@ -322,6 +322,11 @@ func TestHeadings(t *testing.T) {
 			body:   "<h3> <span class='a'>Test </span></h3>",
 			expect: "Test\n----",
 		},
+		testCase{
+			name:   "rule counts characters rather than bytes",
+			body:   "<h2>Café résumé</h2>",
+			expect: "-----------\nCafé résumé\n-----------",
+		},
 	)
 }
 
