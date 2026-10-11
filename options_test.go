@@ -100,6 +100,12 @@ func TestOptionsFootnotesSkipEmptyLinks(t *testing.T) {
 	assert.Equal(t, "text", result)
 }
 
+func TestOptionsFootnotesReuseRepeatedTargets(t *testing.T) {
+	result, err := textplain.Convert(`<p><a href="https://a.example">Logo</a> <a href="https://b.example">b</a> <a href="https://a.example">View</a></p>`, textplain.WithLinks(textplain.LinksFootnotes))
+	require.NoError(t, err)
+	assert.Equal(t, "Logo [1] b [2] View [1]\n\n[1] https://a.example\n[2] https://b.example", result)
+}
+
 func TestOptionsFootnotesOnlyWhenLinksExist(t *testing.T) {
 	result, err := textplain.Convert("<p>no links here</p>", textplain.WithLinks(textplain.LinksFootnotes))
 	require.NoError(t, err)
