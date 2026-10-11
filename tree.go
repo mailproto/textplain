@@ -867,7 +867,7 @@ func fixSpacing(rt string) string {
 			keep = false
 		}
 
-		if keep && !isPreheaderMark(v) {
+		if keep && (!isPreheaderMark(v) || v == '\u200c' && joinsLetters(last, rt[i+size:])) {
 			out.WriteRune(last)
 
 			beforeLast, last = last, v
@@ -883,6 +883,14 @@ func fixSpacing(rt string) string {
 
 func isPreheaderMark(r rune) bool {
 	return strings.ContainsRune("\u034f\u00ad\u2007\u200b\u200c\ufeff", r)
+}
+
+// joinsLetters reports whether a zero width non-joiner sits inside a word, as in
+// Persian and Indic scripts, rather than padding a preheader
+func joinsLetters(before rune, rest string) bool {
+	after, _ := utf8.DecodeRuneInString(rest)
+
+	return unicode.In(before, unicode.L, unicode.M) && unicode.In(after, unicode.L, unicode.M)
 }
 
 // isHidden reports whether an element is kept out of the rendered message.

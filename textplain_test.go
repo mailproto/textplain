@@ -84,6 +84,11 @@ func TestStrippingWhitespace(t *testing.T) {
 			expect: "Preview\n\nBody",
 		},
 		testCase{
+			name:   "zero width non-joiner is kept inside words",
+			body:   "<p>می&zwnj;خواهم क्&zwnj;ष</p>",
+			expect: "می\u200cخواهم क्\u200cष",
+		},
+		testCase{
 			name:   "zero width joiner is kept for emoji",
 			body:   "<p>&#128104;&#8205;&#128105;</p>",
 			expect: "\U0001F468\u200d\U0001F469",
