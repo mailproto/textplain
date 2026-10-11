@@ -366,8 +366,9 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				more := o.take(m)
 
 				href := strings.TrimSpace(getAttr(c, "href"))
-				// a fragment only points within the document, so only its text carries over
-				if href == "" || strings.HasPrefix(href, "#") {
+				// a fragment only points within the document and a script only runs in a
+				// browser, so only the text carries over
+				if href == "" || strings.HasPrefix(href, "#") || hasScheme(href, "javascript:") {
 					o.write(more)
 
 					continue
@@ -379,7 +380,7 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				}
 
 				// Markdown needs the scheme, or the address reads as a relative link
-				if !cv.opts.markdown && len(href) >= len("mailto:") && strings.EqualFold(href[:len("mailto:")], "mailto:") {
+				if !cv.opts.markdown && hasScheme(href, "mailto:") {
 					href = href[len("mailto:"):]
 				}
 
@@ -652,6 +653,10 @@ func sameTarget(text, href string) bool {
 	}
 
 	return text != "" && trim(text) == trim(href)
+}
+
+func hasScheme(href, scheme string) bool {
+	return len(href) >= len(scheme) && strings.EqualFold(href[:len(scheme)], scheme)
 }
 
 func containsImg(n *html.Node) bool {
