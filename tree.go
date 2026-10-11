@@ -203,15 +203,11 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				atom.Article, atom.Aside, atom.Section, atom.Header, atom.Footer, atom.Main, atom.Nav,
 				atom.Figure, atom.Figcaption, atom.Address, atom.Details, atom.Summary,
 				atom.Fieldset, atom.Legend, atom.Form, atom.Hgroup, atom.Caption, atom.Center:
-				m := o.mark()
-				cv.doConvert(o, c)
-				more := o.take(m)
-
 				if o.needsBreak() {
 					o.write("\n")
 				}
 
-				o.write(more)
+				cv.doConvert(o, c)
 				o.write("\n\n")
 
 				continue
