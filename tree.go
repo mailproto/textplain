@@ -331,6 +331,12 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				o.write(emphasized(o.take(m), delim))
 
 				continue
+			case atom.Del, atom.S, atom.Strike:
+				m := o.mark()
+				cv.doConvert(o, c)
+				o.write(emphasized(o.take(m), "~~"))
+
+				continue
 			case atom.Hr:
 				o.write("\n\n")
 				o.write(horizontalRule)

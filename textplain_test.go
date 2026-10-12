@@ -918,6 +918,16 @@ func TestAbbreviations(t *testing.T) {
 	)
 }
 
+func TestStruckText(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "struck text is marked",
+			body:   `<p>Was <s>$20</s> now $15</p><p><del>a</del><strike>b</strike></p>`,
+			expect: "Was ~~$20~~ now $15\n\n~~a~~~~b~~",
+		},
+	)
+}
+
 func TestBlockElements(t *testing.T) {
 	runTestCases(t,
 		testCase{

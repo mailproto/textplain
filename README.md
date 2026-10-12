@@ -85,6 +85,6 @@ Any other table is treated as layout and its cells run on as text. So is a table
 
 ## Markdown
 
-`WithMarkdown` renders the same content as CommonMark: `#` headings, `**bold**` and `*italic*`, code spans and fences, `![alt](src)` images and `[text](url)` links, or reference links with `LinksFootnotes`. Text that would otherwise read as markup is escaped. Data tables become GFM tables; layout tables are flattened as in plain text, with each row ending in a hard break.
+`WithMarkdown` renders the same content as CommonMark: `#` headings, `**bold**`, `*italic*` and `~~struck~~`, code spans and fences, `![alt](src)` images and `[text](url)` links, or reference links with `LinksFootnotes`. Text that would otherwise read as markup is escaped. Data tables become GFM tables; layout tables are flattened as in plain text, with each row ending in a hard break.
 
 Markdown output is never wrapped, so `WithLineLength` and `WithPlainHeadings` have no effect.
