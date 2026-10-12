@@ -53,6 +53,18 @@ func TestWrappingMultibyteWithoutBreakpoints(t *testing.T) {
 	assert.Equal(t, unbroken, textplain.WordWrap(unbroken, 10))
 }
 
+func TestWrappingWideCharacters(t *testing.T) {
+	assert.Equal(t, "日本語日本\n語日本語日\n本語", textplain.WordWrap("日本語日本語日本語日本語", 10), "two columns each, with a break between any two")
+	assert.Equal(t, "日本 abc\ndef", textplain.WordWrap("日本 abc def", 9), "spaces still break")
+	assert.Equal(t, "안녕하세요\n세계", textplain.WordWrap("안녕하세요 세계", 12))
+	assert.Equal(t, "あいうえおかきく\nけ。こ", textplain.WordWrap("あいうえおかきくけ。こ", 18), "closing punctuation stays off the start of a line")
+	assert.Equal(t, "あいうえおかきく\n「け」", textplain.WordWrap("あいうえおかきく「け」", 18), "an opening bracket stays off the end of one")
+	assert.Equal(t, "日本\n( https://example.com )", textplain.WordWrap("日本 ( https://example.com )", 10), "brackets stay with their link")
+	assert.Equal(t, "  日\n本語", textplain.WordWrap("  日本語", 4), "leading spaces are not a break")
+	assert.Equal(t, "👍👍\nok", textplain.WordWrap("👍👍 ok", 6), "emoji take two columns")
+	assert.Equal(t, "ሰላም ሰላም\nሰላም", textplain.WordWrap("ሰላም ሰላም ሰላም", 8), "other scripts high in the BMP stay one column")
+}
+
 func TestWrappingPastARunOfSpaces(t *testing.T) {
 	body := "a" + strings.Repeat(" ", 10) + "b c d e f"
 
@@ -97,7 +109,7 @@ func FuzzWordWrap(f *testing.F) {
 		wrapped := textplain.WordWrap(txt, lineLength)
 
 		assert.True(t, utf8.ValidString(wrapped), "wrapped output is not valid utf-8")
-		// wrapping only ever breaks at spaces, so no other character may be lost or moved
+		// wrapping only adds line breaks and drops spaces at them, so no other character may be lost or moved
 		assert.Equal(t, stripWhitespace(txt), stripWhitespace(wrapped))
 	})
 }

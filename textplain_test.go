@@ -357,6 +357,16 @@ func TestHeadings(t *testing.T) {
 			body:   "<h2>Café résumé</h2>",
 			expect: "-----------\nCafé résumé\n-----------",
 		},
+		testCase{
+			name:   "rule spans wide characters",
+			body:   "<h2>日本語</h2>",
+			expect: "------\n日本語\n------",
+		},
+		testCase{
+			name:   "combining marks take no columns",
+			body:   "<h2>Cafe&#769;</h2>",
+			expect: "----\nCafé\n----",
+		},
 	)
 }
 
@@ -780,6 +790,11 @@ func TestTables(t *testing.T) {
 			name:   "caption, hidden rows and characters rather than bytes",
 			body:   `<table><caption>Prices</caption><tr><th>Café</th><th>€</th></tr><tr style="display:none"><td>hidden</td><td>row</td></tr><tr><td>Thé</td><td>3</td></tr></table>`,
 			expect: "Prices\n\nCafé  €\n----  -\nThé   3",
+		},
+		testCase{
+			name:   "wide characters take two columns",
+			body:   `<table><tr><th>商品</th><th>Qty</th></tr><tr><td>Tea</td><td>2</td></tr></table>`,
+			expect: "商品  Qty\n----  ---\nTea   2",
 		},
 		testCase{
 			name:   "too wide for the line falls back to plain cells",

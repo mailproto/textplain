@@ -3,7 +3,6 @@ package textplain
 import (
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -157,7 +156,7 @@ func alignedTable(cells [][]string, cols int) string {
 
 	for _, row := range cells {
 		for j, cell := range row {
-			widths[j] = max(widths[j], utf8.RuneCountInString(cell))
+			widths[j] = max(widths[j], displayWidth(cell))
 		}
 	}
 
@@ -182,7 +181,7 @@ func alignedTable(cells [][]string, cols int) string {
 				pad = 0
 			}
 
-			pad += widths[j] - utf8.RuneCountInString(text) + 2
+			pad += widths[j] - displayWidth(text) + 2
 		}
 
 		out.WriteByte('\n')
@@ -230,7 +229,7 @@ func longestLine(text string) int {
 	var longest int
 
 	for line := range strings.SplitSeq(text, "\n") {
-		longest = max(longest, utf8.RuneCountInString(line))
+		longest = max(longest, displayWidth(line))
 	}
 
 	return longest
