@@ -13,7 +13,7 @@ import (
 )
 
 // Each case also renders its Markdown with goldmark, so that the expected
-// output is checked against what a CommonMark reader with GFM tables makes of it.
+// output is checked against what a CommonMark reader with GFM tables and strikethrough makes of it.
 func TestMarkdown(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -33,6 +33,12 @@ func TestMarkdown(t *testing.T) {
 			body:     `<p><b>bold</b>, <i> italic </i><em>em</em><strong></strong> and <code>x()</code></p>`,
 			markdown: "**bold**, *italic* *em* and `x()`",
 			rendered: "<p><strong>bold</strong>, <em>italic</em> <em>em</em> and <code>x()</code></p>",
+		},
+		{
+			name:     "struck text",
+			body:     `<p>Was <s>$20</s> now $15, <del> gone </del><strike>old</strike></p>`,
+			markdown: "Was ~~$20~~ now $15, ~~gone~~ ~~old~~",
+			rendered: "<p>Was <del>$20</del> now $15, <del>gone</del> <del>old</del></p>",
 		},
 		{
 			name:     "emphasis across blocks is left bare",
@@ -138,7 +144,7 @@ func TestMarkdown(t *testing.T) {
 			assert.Equal(t, tc.markdown, out)
 
 			var rendered bytes.Buffer
-			require.NoError(t, goldmark.New(goldmark.WithExtensions(extension.Table)).Convert([]byte(out), &rendered))
+			require.NoError(t, goldmark.New(goldmark.WithExtensions(extension.Table, extension.Strikethrough)).Convert([]byte(out), &rendered))
 			assert.Equal(t, tc.rendered, strings.TrimSpace(rendered.String()))
 		})
 	}
