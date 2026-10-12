@@ -32,7 +32,7 @@ if err != nil {
 myPlaintext, err := textplain.ConvertReader(utf8Reader)
 ```
 
-Output wraps at `DefaultLineLength`, which is 65. The word wrapping is exported for use on its own, and counts characters rather than bytes:
+Output wraps at `DefaultLineLength`, which is 65. The word wrapping is exported for use on its own. It counts columns rather than bytes, with Chinese, Japanese and Korean characters taking two, and breaks between those characters as well as at spaces:
 
 ```go
 wrapped := textplain.WordWrap("hello world, here is some text", 15)
@@ -53,7 +53,7 @@ myPlaintext, err := textplain.Convert(myHTML,
 
 | option | default |
 | --- | --- |
-| `WithLineLength(chars)` | `DefaultLineLength`; zero or less does not wrap |
+| `WithLineLength(columns)` | `DefaultLineLength`; zero or less does not wrap |
 | `WithBullet(prefix)` | `"* "` on unordered list items |
 | `WithOrderedSuffix(suffix)` | `". "` after the number on ordered list items |
 | `WithLinks(style)` | `LinksInline` |

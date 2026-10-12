@@ -48,10 +48,10 @@ func newOptions(opts []Option) options {
 	return o
 }
 
-// WithLineLength wraps at the given number of characters. Zero or less does
-// not wrap.
-func WithLineLength(chars int) Option {
-	return func(o *options) { o.lineLength = chars }
+// WithLineLength wraps at the given number of columns, where wide characters
+// take two. Zero or less does not wrap.
+func WithLineLength(columns int) Option {
+	return func(o *options) { o.lineLength = columns }
 }
 
 // WithBullet sets the prefix on unordered list items, "* " by default.
