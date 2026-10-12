@@ -84,7 +84,7 @@ func TestMarkdown(t *testing.T) {
 		},
 		{
 			name:     "lists",
-			body:     `<ul><li>top<ul><li>child</li></ul></li><li>- dash</li></ul><ol><li>one<ul><li>under</li></ul></li></ol>`,
+			body:     `<ul><li>top<ul><li>child</li></ul></li><li>- dash</li></ul><ol type="a"><li>one<ul><li>under</li></ul></li></ol>`,
 			markdown: "* top\n  * child\n* \\- dash\n1. one\n    * under",
 			rendered: "<ul>\n<li>top\n<ul>\n<li>child</li>\n</ul>\n</li>\n<li>- dash</li>\n</ul>\n<ol>\n<li>one\n<ul>\n<li>under</li>\n</ul>\n</li>\n</ol>",
 		},
