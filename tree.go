@@ -331,6 +331,13 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				o.write(emphasized(o.take(m), delim))
 
 				continue
+			case atom.Input:
+				switch strings.ToLower(strings.TrimSpace(getAttr(c, "type"))) {
+				case "submit", "button", "reset":
+					o.write(cv.escape(strings.TrimSpace(getAttr(c, "value"))))
+				}
+
+				continue
 			case atom.Hr:
 				o.write("\n\n")
 				o.write(horizontalRule)
