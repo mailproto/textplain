@@ -764,16 +764,29 @@ func (cv *conversion) ordered(idx int) string {
 }
 
 // listStart reads the start attribute of an ol, which may be negative
-func listStart(n *html.Node) int {
+func listStart(n *html.Node, fallback int) int {
 	if start, err := strconv.Atoi(strings.TrimSpace(getAttr(n, "start"))); err == nil {
 		return start
 	}
 
-	return 1
+	return fallback
 }
 
 func (cv *conversion) listItems(o *output, n *html.Node, prefixer func(int) string) {
-	idx := listStart(n)
+	idx, step := listStart(n, 1), 1
+
+	// a reversed list counts down to one unless start says otherwise
+	if n.DataAtom == atom.Ol && slices.ContainsFunc(n.Attr, func(a html.Attribute) bool { return a.Key == "reversed" }) {
+		var items int
+
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if c.DataAtom == atom.Li && !cv.isHidden(c) {
+				items++
+			}
+		}
+
+		idx, step = listStart(n, items), -1
+	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && cv.isHidden(c) {
@@ -783,7 +796,7 @@ func (cv *conversion) listItems(o *output, n *html.Node, prefixer func(int) stri
 		switch c.DataAtom {
 		case atom.Li:
 			o.write(cv.listItem(o, c, prefixer(idx)))
-			idx++
+			idx += step
 		default:
 			cv.doConvert(o, c)
 		}
