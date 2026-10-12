@@ -1111,6 +1111,11 @@ func TestNonContentElements(t *testing.T) {
 			body:   `<p>a</p><button>Confirm your email</button>`,
 			expect: "a\n\nConfirm your email",
 		},
+		testCase{
+			name:   "button inputs show their value",
+			body:   `<form><input type="SUBMIT" value=" Subscribe "> <input type="button" value="Go"><input type="text" value="typed"><input value="field"></form>`,
+			expect: "Subscribe Go",
+		},
 	)
 }
 

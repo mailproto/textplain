@@ -349,6 +349,13 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				cv.headerBlock(o, c, "-", false)
 
 				continue
+			case atom.Input:
+				switch strings.ToLower(strings.TrimSpace(getAttr(c, "type"))) {
+				case "submit", "button", "reset":
+					o.write(cv.escape(strings.TrimSpace(getAttr(c, "value"))))
+				}
+
+				continue
 			case atom.Img:
 				alt := strings.TrimSpace(getAttr(c, "alt"))
 
