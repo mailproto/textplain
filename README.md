@@ -21,6 +21,17 @@ if err != nil {
 
 `ConvertReader` does the same for an `io.Reader`, such as a MIME part, and also returns any error from reading it.
 
+Input is read as UTF-8. For a part in another charset, such as ISO-8859-1, decode it first with [`golang.org/x/net/html/charset`](https://pkg.go.dev/golang.org/x/net/html/charset):
+
+```go
+utf8Reader, err := charset.NewReader(part, part.Header.Get("Content-Type"))
+if err != nil {
+	// unknown charset
+}
+
+myPlaintext, err := textplain.ConvertReader(utf8Reader)
+```
+
 Output wraps at `DefaultLineLength`, which is 65. The word wrapping is exported for use on its own, and counts characters rather than bytes:
 
 ```go
