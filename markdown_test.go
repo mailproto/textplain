@@ -9,10 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 )
 
 // Each case also renders its Markdown with goldmark, so that the expected
-// output is checked against what a CommonMark reader makes of it.
+// output is checked against what a CommonMark reader with GFM tables makes of it.
 func TestMarkdown(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -101,6 +102,12 @@ func TestMarkdown(t *testing.T) {
 			rendered: `<p>See <a href="https://a">one</a> and <a href="https://b%20c">two</a> and <a href="https://a">again</a></p>`,
 		},
 		{
+			name:     "data table",
+			body:     `<p>Order</p><table><tr><th>Item</th><th>a|b</th></tr><tr><td><a href="https://x">*Widget*</a></td><td>-1</td></tr><tr><td colspan="2">Total</td></tr></table>`,
+			markdown: "Order\n\n| Item | a\\|b |\n| --- | --- |\n| [\\*Widget\\*](https://x) | -1 |\n| Total |  |",
+			rendered: "<p>Order</p>\n<table>\n<thead>\n<tr>\n<th>Item</th>\n<th>a|b</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><a href=\"https://x\">*Widget*</a></td>\n<td>-1</td>\n</tr>\n<tr>\n<td>Total</td>\n<td></td>\n</tr>\n</tbody>\n</table>",
+		},
+		{
 			name:     "links omitted",
 			body:     `<p>See <a href="https://a">one</a></p>`,
 			opts:     []textplain.Option{textplain.WithLinks(textplain.LinksOmitted)},
@@ -131,7 +138,7 @@ func TestMarkdown(t *testing.T) {
 			assert.Equal(t, tc.markdown, out)
 
 			var rendered bytes.Buffer
-			require.NoError(t, goldmark.Convert([]byte(out), &rendered))
+			require.NoError(t, goldmark.New(goldmark.WithExtensions(extension.Table)).Convert([]byte(out), &rendered))
 			assert.Equal(t, tc.rendered, strings.TrimSpace(rendered.String()))
 		})
 	}

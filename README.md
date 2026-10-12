@@ -71,8 +71,20 @@ Read the Docs [1] or the changelog [2].
 [2] https://example.com/changelog
 ```
 
+## Tables
+
+A table whose first row is all header cells is laid out in columns, with the header ruled off:
+
+```
+Item          Qty  Price
+------------  ---  ------
+Widget        2    $10.00
+```
+
+Any other table is treated as layout and its cells run on as text. So is a table with nested tables, cells spanning rows, cells holding more than a line, or columns too wide for the line length.
+
 ## Markdown
 
-`WithMarkdown` renders the same content as CommonMark: `#` headings, `**bold**` and `*italic*`, code spans and fences, `![alt](src)` images and `[text](url)` links, or reference links with `LinksFootnotes`. Text that would otherwise read as markup is escaped. Layout tables are flattened as in plain text, with each row ending in a hard break.
+`WithMarkdown` renders the same content as CommonMark: `#` headings, `**bold**` and `*italic*`, code spans and fences, `![alt](src)` images and `[text](url)` links, or reference links with `LinksFootnotes`. Text that would otherwise read as markup is escaped. Data tables become GFM tables; layout tables are flattened as in plain text, with each row ending in a hard break.
 
 Markdown output is never wrapped, so `WithLineLength` and `WithPlainHeadings` have no effect.

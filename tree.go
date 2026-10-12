@@ -233,6 +233,10 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				o.write(cv.listItem(o, c, ""))
 
 				continue
+			case atom.Table:
+				if rows := cv.dataRows(c); rows != nil && cv.dataTable(o, c, rows) {
+					continue
+				}
 			case atom.Td, atom.Th:
 				cv.doConvert(o, c)
 				o.write(" ")
@@ -381,7 +385,7 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 					href = href[len("mailto:"):]
 				}
 
-				cv.link(o, text, href, containsImg(c))
+				cv.link(o, text, href, contains(c, atom.Img))
 
 				continue
 			}
@@ -664,13 +668,13 @@ func hasScheme(href, scheme string) bool {
 	return len(href) >= len(scheme) && strings.EqualFold(href[:len(scheme)], scheme)
 }
 
-func containsImg(n *html.Node) bool {
+func contains(n *html.Node, a atom.Atom) bool {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if c.DataAtom == atom.Img {
+		if c.DataAtom == a {
 			return true
 		}
 
-		if containsImg(c) {
+		if contains(c, a) {
 			return true
 		}
 	}

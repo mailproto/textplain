@@ -742,9 +742,39 @@ func TestTables(t *testing.T) {
 			expect: "Jan Feb\n1 2",
 		},
 		testCase{
-			name:   "header cells behave like data cells",
-			body:   `<table><thead><tr><th>Month</th><th>Total</th></tr></thead><tbody><tr><td>Jan</td><td>$5</td></tr></tbody></table>`,
-			expect: "Month Total\nJan $5",
+			name:   "a header row lines up the columns",
+			body:   `<p>Your order</p><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead><tbody><tr><td>Widget</td><td>2</td><td>$10.00</td></tr><tr><td>Gadget 	  extra</td><td>10</td><td>$5</td></tr></tbody></table><p>Thanks</p>`,
+			expect: "Your order\n\nItem          Qty  Price\n------------  ---  ------\nWidget        2    $10.00\nGadget extra  10   $5\n\nThanks",
+		},
+		testCase{
+			name:   "spanned and missing cells leave columns empty",
+			body:   `<table><tr><th>Item</th><th>Qty</th><th>Price</th></tr><tr><td colspan="2">Total</td><td>$20</td></tr><tr></tr><tr><td>Note</td></tr></table>`,
+			expect: "Item   Qty  Price\n-----  ---  -----\nTotal       $20\nNote",
+		},
+		testCase{
+			name:   "caption, hidden rows and characters rather than bytes",
+			body:   `<table><caption>Prices</caption><tr><th>Café</th><th>€</th></tr><tr style="display:none"><td>hidden</td><td>row</td></tr><tr><td>Thé</td><td>3</td></tr></table>`,
+			expect: "Prices\n\nCafé  €\n----  -\nThé   3",
+		},
+		testCase{
+			name:   "too wide for the line falls back to plain cells",
+			body:   `<table><tr><th>Name</th><th>Description</th></tr><tr><td>A</td><td>` + strings.Repeat("word ", 15) + `</td></tr></table>`,
+			expect: "Name Description\nA " + strings.TrimSpace(strings.Repeat("word ", 12)) + "\nword word word",
+		},
+		testCase{
+			name:   "block content in a cell falls back to plain cells",
+			body:   `<table><tr><th>Name</th><th>Items</th></tr><tr><td>A</td><td><ul><li>x</li><li>y</li></ul></td></tr></table>`,
+			expect: "Name Items\nA * x\n* y",
+		},
+		testCase{
+			name:   "one block or a trailing break in a cell is still one line",
+			body:   "<table><tr><th>\n  Name\n</th><th>Qty</th></tr><tr><td><p style=\"margin:0\">Widget</p></td><td>2<br></td></tr></table>",
+			expect: "Name    Qty\n------  ---\nWidget  2",
+		},
+		testCase{
+			name:   "layout tables are not lined up",
+			body:   `<table role="presentation"><tr><th>a</th><th>b</th></tr></table><table><tr><td>c</td><th>d</th></tr></table><table><tr><th>e</th></tr></table><table><tr><th>f</th><th>g</th></tr><tr><td rowspan="2">h</td></tr></table><table><tr><th>i</th><th><table><tr><td>j</td></tr></table></th></tr></table>`,
+			expect: "a b\nc d\ne\nf g\nh\ni j",
 		},
 		testCase{
 			name:   "layout cells holding blocks are unaffected",
