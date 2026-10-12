@@ -928,6 +928,16 @@ func TestAbbreviations(t *testing.T) {
 	)
 }
 
+func TestInlineQuotes(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "q is quoted, alternating when nested",
+			body:   `<p>She said <q>see <q>this <q>deep</q></q> link</q>.</p>`,
+			expect: `She said "see 'this "deep"' link".`,
+		},
+	)
+}
+
 func TestBlockElements(t *testing.T) {
 	runTestCases(t,
 		testCase{

@@ -59,8 +59,9 @@ func withoutMarkers(s string) string {
 
 // conversion holds the state of a single Convert call.
 type conversion struct {
-	opts  options
-	links []string
+	opts   options
+	links  []string
+	quotes int
 }
 
 // Convert renders the body of document as plain text, wrapping at
@@ -335,6 +336,20 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				m := o.mark()
 				cv.doConvert(o, c)
 				o.write(emphasized(o.take(m), delim))
+
+				continue
+			case atom.Q:
+				// nested quotes alternate, as browsers render them
+				mark := `"`
+				if cv.quotes%2 == 1 {
+					mark = "'"
+				}
+
+				cv.quotes++
+				o.write(mark)
+				cv.doConvert(o, c)
+				o.write(mark)
+				cv.quotes--
 
 				continue
 			case atom.Hr:
