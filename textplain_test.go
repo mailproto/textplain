@@ -209,6 +209,16 @@ func TestLists(t *testing.T) {
 			expect: "1. a\n2. b",
 		},
 		testCase{
+			name:   "<ol reversed> counts down to one",
+			body:   `<ol reversed><li>a</li><li style="display:none">hidden</li><li>b</li><li>c</li></ol>`,
+			expect: "3. a\n2. b\n1. c",
+		},
+		testCase{
+			name:   "<ol reversed> counts down from start",
+			body:   `<ol reversed start="10"><li>a</li><li>b</li></ol>`,
+			expect: "10. a\n9. b",
+		},
+		testCase{
 			name:   "start on <ul> is ignored",
 			body:   `<ul start="5"><li>a</li><li>b</li></ul>`,
 			expect: "* a\n* b",
