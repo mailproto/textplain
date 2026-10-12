@@ -219,7 +219,8 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 
 				prefixer := cv.unordered
 				if c.DataAtom == atom.Ol {
-					prefixer = cv.ordered
+					kind := strings.TrimSpace(getAttr(c, "type"))
+					prefixer = func(idx int) string { return cv.listNumber(idx, kind) + cv.opts.orderedSuffix }
 				}
 
 				cv.listItems(o, c, prefixer)
@@ -731,8 +732,39 @@ func (cv *conversion) headerBlock(o *output, n *html.Node, blockChar string, pre
 
 func (cv *conversion) unordered(int) string { return cv.opts.bullet }
 
-func (cv *conversion) ordered(idx int) string {
-	return strconv.Itoa(idx) + cv.opts.orderedSuffix
+// listNumber renders a number in the style the type attribute of an ol asks for.
+// Digits stand in where that style has no form for the number, and in Markdown,
+// which only numbers lists with digits.
+func (cv *conversion) listNumber(idx int, kind string) string {
+	switch {
+	case cv.opts.markdown || idx <= 0:
+	case kind == "a" || kind == "A":
+		var letters []byte
+		for n := idx; n > 0; n = (n - 1) / 26 {
+			letters = append([]byte{byte('a' + (n-1)%26)}, letters...)
+		}
+
+		if kind == "A" {
+			return strings.ToUpper(string(letters))
+		}
+
+		return string(letters)
+	case (kind == "i" || kind == "I") && idx < 4000:
+		var numeral strings.Builder
+		for i, v := range []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1} {
+			for ; idx >= v; idx -= v {
+				numeral.WriteString([]string{"m", "cm", "d", "cd", "c", "xc", "l", "xl", "x", "ix", "v", "iv", "i"}[i])
+			}
+		}
+
+		if kind == "I" {
+			return strings.ToUpper(numeral.String())
+		}
+
+		return numeral.String()
+	}
+
+	return strconv.Itoa(idx)
 }
 
 // listStart reads the start attribute of an ol, which may be negative

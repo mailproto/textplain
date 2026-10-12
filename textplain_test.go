@@ -209,6 +209,21 @@ func TestLists(t *testing.T) {
 			expect: "1. a\n2. b",
 		},
 		testCase{
+			name:   "<ol type> letters run on past z",
+			body:   `<ol type="a" start="25"><li>a</li><li>b</li><li>c</li></ol><ol type="A" start="702"><li>d</li><li>e</li></ol>`,
+			expect: "y. a\nz. b\naa. c\nZZ. d\nAAA. e",
+		},
+		testCase{
+			name:   "<ol type> roman numerals",
+			body:   `<ol type="i" start="3"><li>a</li><li>b</li></ol><ol type="I" start="1994"><li>c</li></ol>`,
+			expect: "iii. a\niv. b\nMCMXCIV. c",
+		},
+		testCase{
+			name:   "<ol type> falls back to digits where the style has no number",
+			body:   `<ol type="a" start="0"><li>a</li></ol><ol type="i" start="4000"><li>b</li></ol><ol type="x"><li>c</li></ol>`,
+			expect: "0. a\n4000. b\n1. c",
+		},
+		testCase{
 			name:   "start on <ul> is ignored",
 			body:   `<ul start="5"><li>a</li><li>b</li></ul>`,
 			expect: "* a\n* b",
