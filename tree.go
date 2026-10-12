@@ -282,6 +282,12 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				o.write("\n\n")
 
 				continue
+			case atom.Del, atom.S, atom.Strike:
+				m := o.mark()
+				cv.doConvert(o, c)
+				o.write(emphasized(o.take(m), "~~"))
+
+				continue
 			case atom.Sub, atom.Sup:
 				m := o.mark()
 				cv.doConvert(o, c)
@@ -329,12 +335,6 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 				m := o.mark()
 				cv.doConvert(o, c)
 				o.write(emphasized(o.take(m), delim))
-
-				continue
-			case atom.Del, atom.S, atom.Strike:
-				m := o.mark()
-				cv.doConvert(o, c)
-				o.write(emphasized(o.take(m), "~~"))
 
 				continue
 			case atom.Hr:

@@ -893,6 +893,16 @@ func TestSubAndSuperscript(t *testing.T) {
 	)
 }
 
+func TestStruckText(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "struck text is marked",
+			body:   `<p>Was <s>$20</s> now $15</p><p><del>a</del><strike>b</strike></p>`,
+			expect: "Was ~~$20~~ now $15\n\n~~a~~~~b~~",
+		},
+	)
+}
+
 func TestAbbreviations(t *testing.T) {
 	runTestCases(t,
 		testCase{
@@ -914,16 +924,6 @@ func TestAbbreviations(t *testing.T) {
 			name:   "title repeating the text",
 			body:   `<p><abbr title="html">HTML</abbr></p>`,
 			expect: "HTML",
-		},
-	)
-}
-
-func TestStruckText(t *testing.T) {
-	runTestCases(t,
-		testCase{
-			name:   "struck text is marked",
-			body:   `<p>Was <s>$20</s> now $15</p><p><del>a</del><strike>b</strike></p>`,
-			expect: "Was ~~$20~~ now $15\n\n~~a~~~~b~~",
 		},
 	)
 }
