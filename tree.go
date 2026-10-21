@@ -97,9 +97,10 @@ func ConvertNode(root *html.Node, opts ...Option) (string, error) {
 
 	cv := &conversion{opts: newOptions(opts)}
 
-	var o output
+	o := newOutput()
+	defer o.release()
 
-	cv.doConvert(&o, body)
+	cv.doConvert(o, body)
 
 	preformatted, text := extractPre(o.String())
 
@@ -936,7 +937,11 @@ func fixSpacing(rt string) string {
 	)
 
 	for i := firstSize + secondSize; i < len(rt); {
-		v, size := utf8.DecodeRuneInString(rt[i:])
+		v, size := rune(rt[i]), 1
+		if v >= utf8.RuneSelf {
+			v, size = utf8.DecodeRuneInString(rt[i:])
+		}
+
 		keep := true
 
 		switch {
@@ -966,7 +971,7 @@ func fixSpacing(rt string) string {
 }
 
 func isPreheaderMark(r rune) bool {
-	return strings.ContainsRune("\u034f\u00ad\u2007\u200b\u200c\ufeff", r)
+	return r >= '­' && strings.ContainsRune("\u034f\u00ad\u2007\u200b\u200c\ufeff", r)
 }
 
 // joinsLetters reports whether a zero width non-joiner sits inside a word, as in
