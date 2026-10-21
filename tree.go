@@ -83,6 +83,13 @@ func ConvertReader(r io.Reader, opts ...Option) (string, error) {
 		return "", err
 	}
 
+	return ConvertNode(root, opts...)
+}
+
+// ConvertNode is Convert for a document already parsed with html.Parse, for a
+// caller that has the tree and would otherwise render it only to have it parsed
+// again. It does not modify the tree.
+func ConvertNode(root *html.Node, opts ...Option) (string, error) {
 	body := findBody(root)
 	if body == nil {
 		return "", ErrBodyNotFound
