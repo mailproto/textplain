@@ -10,6 +10,7 @@ import (
 	"github.com/mailproto/textplain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	nethtml "golang.org/x/net/html"
 )
 
 type testCase struct {
@@ -751,6 +752,47 @@ func TestConvertReader(t *testing.T) {
 		readErr := errors.New("connection reset")
 		_, err := textplain.ConvertReader(iotest.ErrReader(readErr))
 		require.ErrorIs(t, err, readErr)
+	})
+}
+
+func TestConvertNode(t *testing.T) {
+	t.Run("matches Convert", func(t *testing.T) {
+		t.Parallel()
+		document := `<html><body><h1>Title</h1><p>Some <a href="https://example.com/a?b=1&amp;c=2">linked</a> text</p>` +
+			`<ul><li>one</li><li>two</li></ul><pre>  kept   as is</pre><table><tr><td>a</td><td>b</td></tr></table></body></html>`
+		root, err := nethtml.Parse(strings.NewReader(document))
+		require.NoError(t, err)
+		want, err := textplain.Convert(document)
+		require.NoError(t, err)
+
+		got, err := textplain.ConvertNode(root)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("leaves the tree unchanged", func(t *testing.T) {
+		t.Parallel()
+		document := `<html><body><blockquote>quoted</blockquote><p>a<br>b</p><hr><ol><li>x</li></ol></body></html>`
+		root, err := nethtml.Parse(strings.NewReader(document))
+		require.NoError(t, err)
+		var before strings.Builder
+		require.NoError(t, nethtml.Render(&before, root))
+
+		_, err = textplain.ConvertNode(root, textplain.WithMarkdown())
+
+		require.NoError(t, err)
+		var after strings.Builder
+		require.NoError(t, nethtml.Render(&after, root))
+		assert.Equal(t, before.String(), after.String())
+	})
+
+	t.Run("a document without a body", func(t *testing.T) {
+		t.Parallel()
+		root, err := nethtml.Parse(strings.NewReader(`<frameset><frame src="a.html"/></frameset>`))
+		require.NoError(t, err)
+		_, err = textplain.ConvertNode(root)
+		require.ErrorIs(t, err, textplain.ErrBodyNotFound)
 	})
 }
 

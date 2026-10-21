@@ -21,6 +21,8 @@ if err != nil {
 
 `ConvertReader` does the same for an `io.Reader`, such as a MIME part, and also returns any error from reading it.
 
+`ConvertNode` takes a document already parsed with `html.Parse`, for a caller that holds the tree and would otherwise render it to a string only for it to be parsed again. It does not modify the tree.
+
 Input is read as UTF-8. For a part in another charset, such as ISO-8859-1, decode it first with [`golang.org/x/net/html/charset`](https://pkg.go.dev/golang.org/x/net/html/charset):
 
 ```go
