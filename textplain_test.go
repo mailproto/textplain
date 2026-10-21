@@ -829,6 +829,11 @@ func TestTables(t *testing.T) {
 			expect: "Item   Qty  Price\n-----  ---  -----\nTotal       $20\nNote",
 		},
 		testCase{
+			name:   "a huge colspan is clamped rather than allocated",
+			body:   `<table><tr><th colspan="9223372036854775807">a</th><th>b</th></tr></table>`,
+			expect: "a b",
+		},
+		testCase{
 			name:   "caption, hidden rows and characters rather than bytes",
 			body:   `<table><caption>Prices</caption><tr><th>Café</th><th>€</th></tr><tr style="display:none"><td>hidden</td><td>row</td></tr><tr><td>Thé</td><td>3</td></tr></table>`,
 			expect: "Prices\n\nCafé  €\n----  -\nThé   3",
