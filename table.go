@@ -27,6 +27,11 @@ func (cv *conversion) dataRows(table *html.Node) [][]*html.Node {
 				continue
 			}
 
+			// before contains walks the subtree, so layout tables are rejected cheaply
+			if len(rows) == 0 && c.DataAtom != atom.Th {
+				return nil
+			}
+
 			if span(c, "rowspan") > 1 || contains(c, atom.Table) {
 				return nil
 			}
@@ -41,12 +46,6 @@ func (cv *conversion) dataRows(table *html.Node) [][]*html.Node {
 
 	if len(rows) == 0 || len(rows[0]) < 2 {
 		return nil
-	}
-
-	for _, c := range rows[0] {
-		if c.DataAtom != atom.Th {
-			return nil
-		}
 	}
 
 	return rows

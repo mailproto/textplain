@@ -3,6 +3,7 @@ package textplain
 import (
 	"bytes"
 	"strings"
+	"sync"
 )
 
 // output accumulates converted text in one buffer rather than a slice of
@@ -12,6 +13,26 @@ type output struct {
 	buf    bytes.Buffer
 	last   string
 	writes int
+}
+
+// maxPooled keeps one huge document from pinning its buffer in the pool
+const maxPooled = 64 << 10
+
+var outputs = sync.Pool{New: func() any { return new(output) }}
+
+func newOutput() *output {
+	return outputs.Get().(*output)
+}
+
+// release returns o to the pool; nothing may use it afterwards
+func (o *output) release() {
+	if o.buf.Cap() > maxPooled {
+		return
+	}
+
+	o.buf.Reset()
+	o.writes, o.last = 0, ""
+	outputs.Put(o)
 }
 
 func (o *output) write(s string) {

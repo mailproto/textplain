@@ -1279,6 +1279,20 @@ func TestManyPreformattedBlocks(t *testing.T) {
 	assert.Equal(t, strings.Join(expect, "\n\n"), result)
 }
 
+func TestConversionsDoNotShareOutput(t *testing.T) {
+	large := strings.Repeat("word ", 20000)
+
+	result, err := textplain.Convert("<p>"+large+"</p>", textplain.WithLineLength(0))
+	require.NoError(t, err)
+	assert.Equal(t, strings.TrimSpace(large), result)
+
+	for range 3 {
+		result, err = textplain.Convert("<p>small</p>")
+		require.NoError(t, err)
+		assert.Equal(t, "small", result)
+	}
+}
+
 func TestMarkersInContent(t *testing.T) {
 	runTestCases(t,
 		testCase{
