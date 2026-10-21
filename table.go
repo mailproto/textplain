@@ -71,10 +71,12 @@ func (cv *conversion) visibleRows(n *html.Node) []*html.Node {
 	return rows
 }
 
+// span clamps to 1000, the HTML limit for colspan, so a hostile span can't
+// allocate without bound
 func span(n *html.Node, attr string) int {
 	if v := strings.TrimSpace(getAttr(n, attr)); v != "" {
 		if count, err := strconv.Atoi(v); err == nil {
-			return count
+			return min(max(count, 1), 1000)
 		}
 	}
 
