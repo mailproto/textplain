@@ -391,7 +391,8 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 
 				switch src := strings.TrimSpace(getAttr(c, "src")); {
 				case alt == "":
-				case cv.opts.markdown && src != "":
+				// an inline image would copy its whole encoding into the text
+				case cv.opts.markdown && src != "" && !hasScheme(src, "data:"):
 					o.write("![" + cv.escape(oneLine(alt)) + "](" + destination(src) + ")")
 				default:
 					o.write(cv.escape(alt))
@@ -670,6 +671,12 @@ func (cv *conversion) markdownLink(o *output, text, href string, hasImg bool) {
 		text = escapeMarkdown(href)
 	}
 
+	if cv.opts.links != LinksFootnotes && text == escapeMarkdown(href) && autolinks(href) {
+		o.write("<" + href + ">")
+
+		return
+	}
+
 	o.write("[")
 	o.write(oneLine(text))
 
@@ -684,6 +691,13 @@ func (cv *conversion) markdownLink(o *output, text, href string, hasImg bool) {
 	o.write("](")
 	o.write(destination(href))
 	o.write(")")
+}
+
+// autolinks reports whether href can be written as a CommonMark autolink, <href>,
+// which allows no spaces, controls or angle brackets
+func autolinks(href string) bool {
+	return (hasScheme(href, "http://") || hasScheme(href, "https://")) &&
+		!strings.ContainsFunc(href, func(r rune) bool { return r <= ' ' || r == '<' || r == '>' })
 }
 
 // sameTarget reports whether link text is just its href, give or take the scheme,

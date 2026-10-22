@@ -97,8 +97,20 @@ func TestMarkdown(t *testing.T) {
 		{
 			name:     "links",
 			body:     `<a href="https://e.com/a b(c)">Click</a> <a href="https://e.com/?q=&lt;x&gt;">q</a> <a href="mailto:a@b.co">mail</a> <a href="#top">top</a> <a href="https://empty"></a> <a href="https://x"><img alt="Logo" src="l.png"></a> <a href="https://y"><img src="p.png"></a>`,
-			markdown: "[Click](<https://e.com/a b(c)>) [q](https://e.com/?q=%3Cx%3E) [mail](mailto:a@b.co) top [![Logo](l.png)](https://x) [https://y](https://y)",
+			markdown: "[Click](<https://e.com/a b(c)>) [q](https://e.com/?q=%3Cx%3E) [mail](mailto:a@b.co) top [![Logo](l.png)](https://x) <https://y>",
 			rendered: `<p><a href="https://e.com/a%20b(c)">Click</a> <a href="https://e.com/?q=%3Cx%3E">q</a> <a href="mailto:a@b.co">mail</a> top <a href="https://x"><img src="l.png" alt="Logo"></a> <a href="https://y">https://y</a></p>`,
+		},
+		{
+			name:     "links that are their own text",
+			body:     `<a href="https://e.com/a_b">https://e.com/a_b</a> <a href="https://e.com/x y">https://e.com/x y</a> <a href="ftp://e.com">ftp://e.com</a>`,
+			markdown: "<https://e.com/a_b> [https://e.com/x y](<https://e.com/x y>) [ftp://e.com](ftp://e.com)",
+			rendered: `<p><a href="https://e.com/a_b">https://e.com/a_b</a> <a href="https://e.com/x%20y">https://e.com/x y</a> <a href="ftp://e.com">ftp://e.com</a></p>`,
+		},
+		{
+			name:     "inline images keep only their alt",
+			body:     `<img alt="Logo" src="data:image/png;base64,iVBORw0KGgo="> <img alt="Photo" src="DATA:image/gif;base64,R0lG">`,
+			markdown: "Logo Photo",
+			rendered: "<p>Logo Photo</p>",
 		},
 		{
 			name:     "links as footnotes",
