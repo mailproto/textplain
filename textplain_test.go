@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 	"testing/iotest"
+	"unicode/utf8"
 
 	"github.com/mailproto/textplain"
 	"github.com/stretchr/testify/assert"
@@ -1366,5 +1367,47 @@ func TestPreformatted(t *testing.T) {
 		result, err := textplain.Convert("<pre>"+line+"</pre>", textplain.WithLineLength(20))
 		require.NoError(t, err)
 		assert.Equal(t, line, result)
+	})
+}
+
+func FuzzConvert(f *testing.F) {
+	for _, seed := range []string{
+		`<h1>Title</h1><p>Some <b>bold</b>, <i>italic</i> and <a href="https://example.com/x">a link</a>.</p>`,
+		`<ol reversed type="i"><li>one<ul><li>nested</li></ul><li>two</ol><dl><dt>term<dd>definition</dl>`,
+		`<table><tr><th>Item<th>Qty<tr><td>Widget<td colspan=2>2</table><table role=presentation><tr><td>layout</table>`,
+		`<blockquote><pre>code
+  indented</pre><p>quoted <q>words</q></p></blockquote><hr><p>x<sup>2</sup> H<sub>2</sub>O <del>old</del></p>`,
+		`<div style="display:none">hidden</div><p>&nbsp;</p><span>a <span>b </span></span><img alt="alt" src="i.png">`,
+		"<p>日本語のテキスト、そして English words&#1;\x02&#7;\x08 <abbr title=\"x\">y</abbr><br>next</p>",
+	} {
+		for flags := range uint8(8) {
+			f.Add(seed, flags)
+		}
+	}
+
+	f.Fuzz(func(t *testing.T, doc string, flags uint8) {
+		var opts []textplain.Option
+		if flags&1 != 0 {
+			opts = append(opts, textplain.WithMarkdown())
+		}
+
+		if flags&2 != 0 {
+			opts = append(opts, textplain.WithLinks(textplain.LinksFootnotes))
+		}
+
+		if flags&4 != 0 {
+			opts = append(opts, textplain.WithLineLength(int(flags>>3)+1))
+		}
+
+		result, err := textplain.Convert(doc, opts...)
+		if err != nil {
+			return
+		}
+
+		if utf8.ValidString(doc) {
+			assert.True(t, utf8.ValidString(result), "output is not valid utf-8")
+		}
+
+		assert.False(t, strings.ContainsFunc(result, func(r rune) bool { return r <= '\x08' }), "a marker leaked into the output")
 	})
 }
