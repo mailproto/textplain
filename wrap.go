@@ -148,11 +148,11 @@ func runeOffset(s string, i, n int) int {
 const high = 0x8080808080808080
 
 // word8 loads the eight bytes at s[i:] as one little-endian word
-func word8(s string, i int) uint64 {
-	w := s[i : i+8]
+func word8[T string | []byte](s T, i int) uint64 {
+	_ = s[i+7]
 
-	return uint64(w[0]) | uint64(w[1])<<8 | uint64(w[2])<<16 | uint64(w[3])<<24 |
-		uint64(w[4])<<32 | uint64(w[5])<<40 | uint64(w[6])<<48 | uint64(w[7])<<56
+	return uint64(s[i]) | uint64(s[i+1])<<8 | uint64(s[i+2])<<16 | uint64(s[i+3])<<24 |
+		uint64(s[i+4])<<32 | uint64(s[i+5])<<40 | uint64(s[i+6])<<48 | uint64(s[i+7])<<56
 }
 
 // keepBrackets moves a break at i so that a lone "(" never ends a line and a

@@ -1,6 +1,7 @@
 package textplain
 
 import (
+	"bytes"
 	"io"
 	"slices"
 	"strconv"
@@ -121,9 +122,10 @@ func ConvertNode(root *html.Node, opts ...Option) (string, error) {
 
 	cv.doConvert(o, body)
 
-	preformatted, text := extractPre(o.String())
+	// read straight from the buffer, which is not released until this returns
+	preformatted, raw := extractPre(o.buf.Bytes())
 
-	text = fixSpacing(text)
+	text := fixSpacing(raw)
 
 	if cv.opts.markdown {
 		text = settleMarkdown(text)
@@ -512,39 +514,36 @@ func applyQuotes(text string) string {
 
 // extractPre lifts each preformatted block out of the text, leaving a
 // placeholder, so that spacing and wrapping do not touch it
-func extractPre(text string) ([]string, string) {
-	if !strings.Contains(text, preOpen) {
+func extractPre(text []byte) ([][]byte, []byte) {
+	if !bytes.Contains(text, []byte(preOpen)) {
 		return nil, text
 	}
 
 	var (
-		blocks []string
-		out    strings.Builder
+		blocks [][]byte
+		out    = make([]byte, 0, len(text))
 	)
 
 	for {
-		before, rest, found := strings.Cut(text, preOpen)
+		before, rest, found := bytes.Cut(text, []byte(preOpen))
 		if !found {
 			break
 		}
 
-		block, after, _ := strings.Cut(rest, preClose)
+		block, after, _ := bytes.Cut(rest, []byte(preClose))
 
-		out.WriteString(before)
-		out.WriteString(prePlaceholder)
-		blocks = append(blocks, strings.Trim(block, "\n"))
+		out = append(append(out, before...), prePlaceholder...)
+		blocks = append(blocks, bytes.Trim(block, "\n"))
 
 		text = after
 	}
 
-	out.WriteString(text)
-
-	return blocks, out.String()
+	return blocks, append(out, text...)
 }
 
 // restorePre puts each preformatted block back in place of its placeholder, in
 // one pass
-func restorePre(text string, blocks []string) string {
+func restorePre(text string, blocks [][]byte) string {
 	if len(blocks) == 0 {
 		return text
 	}
@@ -562,7 +561,7 @@ func restorePre(text string, blocks []string) string {
 		before, after, _ := strings.Cut(text, prePlaceholder)
 
 		out.WriteString(before)
-		out.WriteString(block)
+		out.Write(block)
 		text = after
 	}
 
@@ -1010,15 +1009,15 @@ func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 	return nil, true
 }
 
-func fixSpacing(rt string) string {
-	first, firstSize := utf8.DecodeRuneInString(rt)
+func fixSpacing(rt []byte) string {
+	first, firstSize := utf8.DecodeRune(rt)
 	if firstSize == 0 {
-		return rt
+		return ""
 	}
 
-	second, secondSize := utf8.DecodeRuneInString(rt[firstSize:])
+	second, secondSize := utf8.DecodeRune(rt[firstSize:])
 	if secondSize == 0 {
-		return rt
+		return string(rt)
 	}
 
 	var out strings.Builder
@@ -1034,8 +1033,6 @@ func fixSpacing(rt string) string {
 	)
 
 	for i := firstSize + secondSize; i < len(rt); {
-		// ASCII other than spacing can't trigger any rule below, so a run of it is
-		// copied whole, leaving its last byte pending
 		// after a space or a line break every further space or tab is dropped, and
 		// a tab makes the pending space a line break, so indentation is skipped
 		if c := rt[i]; (c == ' ' || c == '\t') && (isSpaceOrNBSP(last) || last == '\n') {
@@ -1048,10 +1045,12 @@ func fixSpacing(rt string) string {
 			continue
 		}
 
+		// ASCII other than spacing can't trigger any rule below, so a run of it is
+		// copied whole, leaving its last byte pending
 		if c := rt[i]; c > ' ' && c < utf8.RuneSelf {
 			j := plainRun(rt, i+1)
 			out.WriteRune(last)
-			out.WriteString(rt[i : j-1])
+			out.Write(rt[i : j-1])
 
 			if j-i >= 2 {
 				beforeLast = rune(rt[j-2])
@@ -1066,7 +1065,7 @@ func fixSpacing(rt string) string {
 
 		v, size := rune(rt[i]), 1
 		if v >= utf8.RuneSelf {
-			v, size = utf8.DecodeRuneInString(rt[i:])
+			v, size = utf8.DecodeRune(rt[i:])
 		}
 
 		keep := true
@@ -1102,7 +1101,7 @@ func fixSpacing(rt string) string {
 // plainRun returns the end of the run of printable ASCII, other than space,
 // starting at i, eight bytes at a time while no byte is at or below a space or
 // outside ASCII
-func plainRun(s string, i int) int {
+func plainRun(s []byte, i int) int {
 	for len(s)-i >= 8 {
 		if w := word8(s, i); (w|(w-0x2121212121212121)&^w)&high != 0 {
 			break
@@ -1128,8 +1127,8 @@ func isPreheaderMark(r rune) bool {
 
 // joinsLetters reports whether a zero width non-joiner sits inside a word, as in
 // Persian and Indic scripts, rather than padding a preheader
-func joinsLetters(before rune, rest string) bool {
-	after, _ := utf8.DecodeRuneInString(rest)
+func joinsLetters(before rune, rest []byte) bool {
+	after, _ := utf8.DecodeRune(rest)
 
 	return unicode.In(before, unicode.L, unicode.M) && unicode.In(after, unicode.L, unicode.M)
 }
