@@ -896,9 +896,18 @@ func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 
 		switch c.Type {
 		case html.ElementNode:
+			// converted in place, since copying it out costs a copy per level of
+			// nesting; the write always follows so that a block after any span breaks
 			m := o.mark()
 			cv.doConvert(o, c)
-			span = o.take(m)
+
+			if o.trimTail(m) {
+				span = " "
+			}
+
+			o.write(span)
+
+			continue
 		case html.TextNode:
 			span = cv.text(c.Data)
 		}
