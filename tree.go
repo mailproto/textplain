@@ -970,6 +970,11 @@ func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 			m := o.mark()
 			cv.doConvert(o, c)
 
+			// builders strike a former price with a style rather than <del>
+			if struckByStyle(getAttr(c, "style")) {
+				o.write(emphasized(o.take(m), "~~"))
+			}
+
 			if o.trimTail(m) {
 				span = " "
 			}
@@ -1093,6 +1098,21 @@ func (cv *conversion) isHidden(n *html.Node) bool {
 
 // font-size:0 is left out: it is inherited and descendants reset it, as in the
 // inline-block gap fix that wraps whole layouts
+func struckByStyle(style string) bool {
+	for declaration := range strings.SplitSeq(style, ";") {
+		property, value, _ := strings.Cut(declaration, ":")
+
+		switch strings.ToLower(strings.TrimSpace(property)) {
+		case "text-decoration", "text-decoration-line":
+			if strings.Contains(strings.ToLower(value), "line-through") {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func hiddenByStyle(style string) bool {
 	var zeroHeight, overflowHidden bool
 

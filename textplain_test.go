@@ -1056,6 +1056,16 @@ func TestStruckText(t *testing.T) {
 			body:   `<p>Was <s>$20</s> now $15</p><p><del>a</del><strike>b</strike></p>`,
 			expect: "Was ~~$20~~ now $15\n\n~~a~~~~b~~",
 		},
+		testCase{
+			name:   "spans struck by style are marked",
+			body:   `<p>$34.00 <span style="color:#999;Text-Decoration: line-through red">$48.00 </span>today</p><p><span style="text-decoration-line:line-through">x</span></p>`,
+			expect: "$34.00 ~~$48.00~~ today\n\n~~x~~",
+		},
+		testCase{
+			name:   "other decorations are not",
+			body:   `<p><span style="text-decoration:underline">a</span> <span style="text-decoration">b</span></p>`,
+			expect: "a b",
+		},
 	)
 }
 
