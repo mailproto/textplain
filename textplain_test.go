@@ -652,6 +652,41 @@ func TestLinksWithinHeadings(t *testing.T) {
 	)
 }
 
+func TestRepeatedLinks(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "an image and its caption link to the same page",
+			body:   `<a href="https://e.com/p"><img alt="Planter" src="p.png"></a><p><a href="https://e.com/p">planter</a></p>`,
+			expect: "Planter ( https://e.com/p )",
+		},
+		testCase{
+			name:   "an icon gives way to the text link after it",
+			body:   `<a href="https://ig.com/x"><img src="i.png" alt=""></a> <a href="https://ig.com/x">Instagram</a>`,
+			expect: "Instagram ( https://ig.com/x )",
+		},
+		testCase{
+			name:   "an icon after a text link adds nothing",
+			body:   `<a href="https://ig.com/x">Instagram</a><br><a href="https://ig.com/x"><img src="i.png"></a>`,
+			expect: "Instagram ( https://ig.com/x )",
+		},
+		testCase{
+			name:   "different text to the same page is kept",
+			body:   `<a href="https://e.com">Logo</a> <a href="https://e.com">Home</a>`,
+			expect: "Logo ( https://e.com ) Home ( https://e.com )",
+		},
+		testCase{
+			name:   "text between the links keeps both",
+			body:   `<a href="https://e.com">Shop</a> or <a href="https://e.com">Shop</a>`,
+			expect: "Shop ( https://e.com ) or Shop ( https://e.com )",
+		},
+		testCase{
+			name:   "a link rewritten by its heading is not taken as the last",
+			body:   `<h3><a href="https://e.com">Shop</a></h3><a href="https://e.com">Shop</a>`,
+			expect: "Shop ( https://e.com )\n----------------------\n\nShop ( https://e.com )",
+		},
+	)
+}
+
 func TestStripsNonContentTags(t *testing.T) {
 	runTestCases(t, testCase{
 		body: `<html>

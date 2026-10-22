@@ -72,15 +72,9 @@ Watch the leaves rather than the calendar: drooping that recovers within a day o
 
 [Read the full guide](https://example.com/journal/winter-houseplants)
 
-<https://instagram.com/example>
-
 [Instagram](https://instagram.com/example)
 
-<https://pinterest.com/pin/create/button/?url=https://pinterest.com/example&media=&description=>
-
 [Pinterest](https://pinterest.com/pin/create/button/?url=https://pinterest.com/example&media=&description=)
-
-<https://www.facebook.com/sharer/sharer.php?u=https://facebook.com/example>
 
 [Facebook](https://www.facebook.com/sharer/sharer.php?u=https://facebook.com/example)
 

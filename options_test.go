@@ -106,6 +106,12 @@ func TestOptionsFootnotesReuseRepeatedTargets(t *testing.T) {
 	assert.Equal(t, "Logo [1] b [2] View [1]\n\n[1] https://a.example\n[2] https://b.example", result)
 }
 
+func TestOptionsFootnotesForAnIconAndItsLabel(t *testing.T) {
+	result, err := textplain.Convert(`<a href="https://ig.com/x"><img src="i.png"></a> <a href="https://ig.com/x">Instagram</a>`, textplain.WithLinks(textplain.LinksFootnotes))
+	require.NoError(t, err)
+	assert.Equal(t, "Instagram [1]\n\n[1] https://ig.com/x", result)
+}
+
 func TestOptionsFootnotesInATableThatFallsBack(t *testing.T) {
 	result, err := textplain.Convert(`<table><tr><th><a href="https://a.example">a</a></th><th>b</th></tr><tr><td>c<br>d</td><td><a href="https://b.example">e</a></td></tr></table>`, textplain.WithLinks(textplain.LinksFootnotes))
 	require.NoError(t, err)
