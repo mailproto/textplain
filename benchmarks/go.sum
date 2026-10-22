@@ -22,8 +22,8 @@ github.com/jaytaylor/html2text v0.0.0-20260303211410-1a4bdc82ecec h1:DrV+GDNKHeH
 github.com/jaytaylor/html2text v0.0.0-20260303211410-1a4bdc82ecec/go.mod h1:CVKlgaMiht+LXvHG173ujK6JUhZXKb2u/BQtjPDIvyk=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
-github.com/k3a/html2text v1.5.0 h1:m+aUc8Chcz9f0u6TPKEvh30Pl/CTftYbxy8OHAO0jQY=
-github.com/k3a/html2text v1.5.0/go.mod h1:ieEXykM67iT8lTvEWBh6fhpH4B23kB9OMKPdIBmgUqA=
+github.com/k3a/html2text v1.5.1 h1:0aBb3L79fG4vejkMHlBHtqIgfdPZKX/ugHcbaKNYr3g=
+github.com/k3a/html2text v1.5.1/go.mod h1:ieEXykM67iT8lTvEWBh6fhpH4B23kB9OMKPdIBmgUqA=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
 github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
 github.com/mattn/go-isatty v0.0.22 h1:j8l17JJ9i6VGPUFUYoTUKPSgKe/83EYU2zBC7YNKMw4=

@@ -8,7 +8,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/firecrawl/html-to-markdown v0.0.0-20260312013131-1af9901a5d61
 	github.com/jaytaylor/html2text v0.0.0-20260303211410-1a4bdc82ecec
-	github.com/k3a/html2text v1.5.0
+	github.com/k3a/html2text v1.5.1
 	github.com/mailproto/textplain v0.4.0
 	github.com/mattn/godown v0.0.1
 	golang.org/x/net v0.61.0
