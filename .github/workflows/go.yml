@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [ FuzzWordWrap, FuzzFixSpacing ]
+        target: [ FuzzWordWrap, FuzzFixSpacing, FuzzConvert ]
     steps:
     - uses: actions/checkout@v7
 
