@@ -52,10 +52,6 @@ func (o *output) needsBreak() bool {
 	return len(trimmed) == 0 || trimmed[len(trimmed)-1] != '\n'
 }
 
-func (o *output) String() string {
-	return o.buf.String()
-}
-
 // mark records a position so that a subtree can be converted into the same
 // buffer and then lifted back out as a string
 type mark struct {

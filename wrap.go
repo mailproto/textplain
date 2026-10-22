@@ -148,7 +148,7 @@ func runeOffset(s string, i, n int) int {
 const high = 0x8080808080808080
 
 // word8 loads the eight bytes at s[i:] as one little-endian word
-func word8(s string, i int) uint64 {
+func word8[T string | []byte](s T, i int) uint64 {
 	w := s[i : i+8]
 
 	return uint64(w[0]) | uint64(w[1])<<8 | uint64(w[2])<<16 | uint64(w[3])<<24 |
