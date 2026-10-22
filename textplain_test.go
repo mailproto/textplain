@@ -2,6 +2,7 @@ package textplain_test
 
 import (
 	"errors"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -101,6 +102,23 @@ func TestStrippingWhitespace(t *testing.T) {
 			expect: "test text",
 		},
 	)
+}
+
+func TestNestedSpansAreNotCopiedPerLevel(t *testing.T) {
+	text := strings.Repeat("word ", 20000)
+	doc := strings.Repeat("<span>", 200) + text + strings.Repeat("</span>", 200)
+
+	var before, after runtime.MemStats
+
+	runtime.ReadMemStats(&before)
+	result, err := textplain.Convert(doc, textplain.WithLineLength(0))
+	runtime.ReadMemStats(&after)
+
+	require.NoError(t, err)
+	assert.Equal(t, strings.TrimSpace(text), result)
+
+	// a copy per level would allocate 200 times the text
+	assert.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(20*len(text)))
 }
 
 func TestWrappingSpans(t *testing.T) {

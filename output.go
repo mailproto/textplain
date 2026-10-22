@@ -68,6 +68,21 @@ func (o *output) mark() mark {
 	return mark{length: o.buf.Len(), writes: o.writes, last: o.last}
 }
 
+// trimTail drops trailing whitespace written since the mark, reporting whether
+// there was any
+func (o *output) trimTail(m mark) bool {
+	written := o.buf.Bytes()[m.length:]
+
+	trimmed := bytes.TrimRight(written, "\n\t ")
+	if len(trimmed) == len(written) {
+		return false
+	}
+
+	o.buf.Truncate(m.length + len(trimmed))
+
+	return true
+}
+
 // take returns everything written since the mark and rewinds to it
 func (o *output) take(m mark) string {
 	taken := string(o.buf.Bytes()[m.length:])
