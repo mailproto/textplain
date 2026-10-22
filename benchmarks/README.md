@@ -8,6 +8,10 @@ go test -bench BenchmarkConvert -benchmem .
 go test -run TestFidelity -v .    # what each implementation actually produces
 ```
 
+The library's `TestGolden` pins what `textplain` makes of each corpus document under
+`testdata/golden`. After a change meant to alter output, regenerate those files with
+`go test -run TestGolden -update` from the repository root and review the diff.
+
 `parse_floor` is not a converter. It parses the document and concatenates its text nodes, which
 is roughly the least work any parser-based implementation could do, and is there to show how much
 of the runtime belongs to `html.Parse` rather than to conversion.

@@ -1,0 +1,3 @@
+Hello World
+
+Thanks for signing up, [manage your account](https://example.com/account).
