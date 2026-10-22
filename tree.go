@@ -43,7 +43,17 @@ const (
 // cannot match inside a multi-byte rune.
 func withoutMarkers(s string) string {
 	for i := 0; i < len(s); i++ {
-		if s[i] <= '\x08' {
+		// eight bytes at a time: subtracting 9 from each byte sets the high bit
+		// only of those below 9
+		for len(s)-i >= 8 {
+			if w := word8(s, i); (w-0x0909090909090909)&^w&high != 0 {
+				break
+			}
+
+			i += 8
+		}
+
+		if i < len(s) && s[i] <= '\x08' {
 			return strings.Map(func(r rune) rune {
 				if r <= '\x08' {
 					return -1
@@ -103,7 +113,8 @@ func ConvertNode(root *html.Node, opts ...Option) (string, error) {
 		return "", ErrBodyNotFound
 	}
 
-	cv := &conversion{opts: newOptions(opts)}
+	cv := &conversion{}
+	cv.opts.set(opts)
 
 	o := newOutput()
 	defer o.release()
@@ -874,8 +885,11 @@ func (cv *conversion) listNumber(idx int, kind string) string {
 
 // listStart reads the start attribute of an ol, which may be negative
 func listStart(n *html.Node, fallback int) int {
-	if start, err := strconv.Atoi(strings.TrimSpace(getAttr(n, "start"))); err == nil {
-		return start
+	// Atoi allocates its error, so the usual missing attribute is checked first
+	if v := strings.TrimSpace(getAttr(n, "start")); v != "" {
+		if start, err := strconv.Atoi(v); err == nil {
+			return start
+		}
 	}
 
 	return fallback
@@ -1020,6 +1034,36 @@ func fixSpacing(rt string) string {
 	)
 
 	for i := firstSize + secondSize; i < len(rt); {
+		// ASCII other than spacing can't trigger any rule below, so a run of it is
+		// copied whole, leaving its last byte pending
+		// after a space or a line break every further space or tab is dropped, and
+		// a tab makes the pending space a line break, so indentation is skipped
+		if c := rt[i]; (c == ' ' || c == '\t') && (isSpaceOrNBSP(last) || last == '\n') {
+			for ; i < len(rt) && (rt[i] == ' ' || rt[i] == '\t'); i++ {
+				if rt[i] == '\t' {
+					last = '\n'
+				}
+			}
+
+			continue
+		}
+
+		if c := rt[i]; c > ' ' && c < utf8.RuneSelf {
+			j := plainRun(rt, i+1)
+			out.WriteRune(last)
+			out.WriteString(rt[i : j-1])
+
+			if j-i >= 2 {
+				beforeLast = rune(rt[j-2])
+			} else {
+				beforeLast = last
+			}
+
+			last, i = rune(rt[j-1]), j
+
+			continue
+		}
+
 		v, size := rune(rt[i]), 1
 		if v >= utf8.RuneSelf {
 			v, size = utf8.DecodeRuneInString(rt[i:])
@@ -1053,6 +1097,25 @@ func fixSpacing(rt string) string {
 	out.WriteRune(last)
 
 	return out.String()
+}
+
+// plainRun returns the end of the run of printable ASCII, other than space,
+// starting at i, eight bytes at a time while no byte is at or below a space or
+// outside ASCII
+func plainRun(s string, i int) int {
+	for len(s)-i >= 8 {
+		if w := word8(s, i); (w|(w-0x2121212121212121)&^w)&high != 0 {
+			break
+		}
+
+		i += 8
+	}
+
+	for i < len(s) && s[i] > ' ' && s[i] < utf8.RuneSelf {
+		i++
+	}
+
+	return i
 }
 
 func isSpaceOrNBSP(r rune) bool {
@@ -1099,11 +1162,13 @@ func (cv *conversion) isHidden(n *html.Node) bool {
 // font-size:0 is left out: it is inherited and descendants reset it, as in the
 // inline-block gap fix that wraps whole layouts
 func struckByStyle(style string) bool {
-	for declaration := range strings.SplitSeq(style, ";") {
+	for style != "" {
+		var declaration string
+
+		declaration, style, _ = strings.Cut(style, ";")
 		property, value, _ := strings.Cut(declaration, ":")
 
-		switch strings.ToLower(strings.TrimSpace(property)) {
-		case "text-decoration", "text-decoration-line":
+		if property = strings.TrimSpace(property); strings.EqualFold(property, "text-decoration") || strings.EqualFold(property, "text-decoration-line") {
 			if strings.Contains(strings.ToLower(value), "line-through") {
 				return true
 			}
@@ -1116,43 +1181,57 @@ func struckByStyle(style string) bool {
 func hiddenByStyle(style string) bool {
 	var zeroHeight, overflowHidden bool
 
-	for declaration := range strings.SplitSeq(style, ";") {
+	// every element of a built template carries a style, so nothing is lowered
+	// or allocated for declarations that cannot hide it
+	for style != "" {
+		var declaration string
+
+		declaration, style, _ = strings.Cut(style, ";")
+
 		property, value, ok := strings.Cut(declaration, ":")
 		if !ok {
 			continue
 		}
 
-		property = strings.ToLower(strings.TrimSpace(property))
-		value = strings.ToLower(strings.TrimSpace(value))
-		value = strings.TrimSpace(strings.TrimSuffix(value, "!important"))
+		property, value = strings.TrimSpace(property), cssValue(value)
 
-		switch property {
-		case "display":
-			if value == "none" {
+		switch {
+		case strings.EqualFold(property, "display"):
+			if strings.EqualFold(value, "none") {
 				return true
 			}
-		case "visibility":
-			if value == "hidden" || value == "collapse" {
+		case strings.EqualFold(property, "visibility"):
+			if strings.EqualFold(value, "hidden") || strings.EqualFold(value, "collapse") {
 				return true
 			}
-		case "opacity":
+		case strings.EqualFold(property, "opacity"):
 			if isZeroValue(value) {
 				return true
 			}
-		case "max-height":
+		case strings.EqualFold(property, "max-height"):
 			zeroHeight = isZeroValue(value)
-		case "overflow", "overflow-y":
-			overflowHidden = value == "hidden"
+		case strings.EqualFold(property, "overflow"), strings.EqualFold(property, "overflow-y"):
+			overflowHidden = strings.EqualFold(value, "hidden")
 		}
 	}
 
 	return zeroHeight && overflowHidden
 }
 
+// cssValue trims a declaration's value and any !important after it
+func cssValue(value string) string {
+	value = strings.TrimSpace(value)
+	if n := len(value) - len("!important"); n >= 0 && strings.EqualFold(value[n:], "!important") {
+		value = strings.TrimSpace(value[:n])
+	}
+
+	return value
+}
+
 // isZeroValue reports whether a css number or length is zero, with or without a unit,
 // so that opacity:0.5 and font-size:0.9em are not mistaken for zero
 func isZeroValue(value string) bool {
-	size, err := strconv.ParseFloat(strings.TrimRight(value, "abcdefghijklmnopqrstuvwxyz%"), 64)
+	size, err := strconv.ParseFloat(strings.TrimRight(strings.ToLower(value), "abcdefghijklmnopqrstuvwxyz%"), 64)
 
 	return err == nil && size == 0
 }

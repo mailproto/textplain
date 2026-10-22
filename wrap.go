@@ -11,7 +11,7 @@ import (
 // characters, so that it fits within lineLength columns. Wide characters take
 // two columns. Zero or less does not wrap.
 func WordWrap(txt string, lineLength int) string {
-	if lineLength <= 0 {
+	if lineLength <= 0 || fits(txt, lineLength) {
 		return txt
 	}
 
@@ -92,6 +92,23 @@ func WordWrap(txt string, lineLength int) string {
 	}
 
 	return out.String()
+}
+
+// fits reports whether no line of txt is longer than lineLength bytes, so that
+// nothing needs wrapping
+func fits(txt string, lineLength int) bool {
+	for {
+		line, rest, more := strings.Cut(txt, "\n")
+		if len(line) > lineLength {
+			return false
+		}
+
+		if !more {
+			return true
+		}
+
+		txt = rest
+	}
 }
 
 // runeOffset returns the byte offset n runes past i, or len(s) if there are
