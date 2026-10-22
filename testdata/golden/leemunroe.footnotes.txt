@@ -1,0 +1,22 @@
+This is preheader text. Some clients will show this text as a
+preview.
+
+Hi there
+
+Sometimes you just want to send a simple HTML email with a simple
+design and clear call to action. This is it.
+
+Call To Action [1]
+
+This is a really simple email template. It's sole purpose is to
+get the recipient to click the button with no distractions.
+
+Good luck! Hope it works.
+
+Company Inc, 7-11 Commercial Ct, Belfast BT1 2NB
+Don't like these emails? Unsubscribe [2].
+
+Powered by HTMLemail.io [1]
+
+[1] http://htmlemail.io
+[2] http://htmlemail.io/blog
