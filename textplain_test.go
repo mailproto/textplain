@@ -99,6 +99,21 @@ func TestStrippingWhitespace(t *testing.T) {
 			body:   "test        text",
 			expect: "test text",
 		},
+		testCase{
+			name:   "spacer paragraphs",
+			body:   "<p>a</p><p>&nbsp;</p><p> &nbsp; </p><p>b</p>",
+			expect: "a\n\nb",
+		},
+		testCase{
+			name:   "spacer cells",
+			body:   "<table><tr><td>&nbsp;</td><td>Name&nbsp;</td></tr><tr><td height=\"20\">&nbsp;</td></tr><tr><td>Bob</td></tr></table>",
+			expect: "Name\n\nBob",
+		},
+		testCase{
+			name:   "non-breaking space between words is kept",
+			body:   "<p>ut&nbsp;erat and a&nbsp;&nbsp;b</p>",
+			expect: "ut erat and a b",
+		},
 	)
 }
 
