@@ -77,6 +77,8 @@ var (
 var implementations = []implementation{
 	{"textplain", true, func(d string) (string, error) { return textplain.Convert(d) }},
 	{"textplain_nowrap", false, func(d string) (string, error) { return textplain.Convert(d, textplain.WithLineLength(0)) }},
+	// wrapping only at the SMTP line limit, as a mail sender would
+	{"textplain_990", true, func(d string) (string, error) { return textplain.Convert(d, textplain.WithLineLength(990)) }},
 	{"jaytaylor", false, func(d string) (string, error) { return jaytaylor.FromString(d) }},
 	{"jaytaylor_pretty", false, func(d string) (string, error) {
 		return jaytaylor.FromString(d, jaytaylor.Options{PrettyTables: true})

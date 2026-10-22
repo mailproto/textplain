@@ -1,0 +1,148 @@
+<mjml>
+  <mj-head>
+    <mj-title>The Weekly Bench</mj-title>
+    <mj-preview>Five new arrivals, a spring sale and our guide to keeping houseplants alive</mj-preview>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css?family=Inter:400,600,700" />
+    <mj-attributes>
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="16px" line-height="24px" color="#1f2933" />
+      <mj-button background-color="#0f766e" color="#ffffff" font-size="16px" font-weight="600" border-radius="6px" inner-padding="14px 28px" />
+      <mj-section padding="0" />
+      <mj-class name="muted" color="#52606d" font-size="14px" line-height="20px" />
+      <mj-class name="eyebrow" color="#0f766e" font-size="12px" font-weight="700" letter-spacing="1.5px" text-transform="uppercase" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .product-name a { color: #1f2933; text-decoration: none; }
+      .footer-links a { color: #52606d; text-decoration: underline; }
+    </mj-style>
+    <mj-style>
+      @media (prefers-color-scheme: dark) {
+        .dark-bg { background-color: #111827 !important; }
+        .dark-text div { color: #f3f4f6 !important; }
+      }
+      @media only screen and (max-width: 480px) {
+        .hide-mobile { display: none !important; }
+        .stack-mobile td { display: block !important; width: 100% !important; }
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f3f4f6" width="600px">
+    <mj-section padding="12px 0">
+      <mj-column>
+        <mj-text align="center" mj-class="muted" font-size="12px">
+          Trouble viewing this email? <a href="https://example.com/view/2026-10-22" style="color:#52606d">View it in your browser</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="24px 0 8px" css-class="dark-bg">
+      <mj-column width="50%">
+        <mj-image src="https://example.com/img/logo.png" alt="Bench &amp; Co." width="120px" align="left" href="https://example.com/" />
+      </mj-column>
+      <mj-column width="50%" css-class="hide-mobile">
+        <mj-text align="right" mj-class="muted">
+          <a href="https://example.com/shop" style="color:#1f2933;text-decoration:none">Shop</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="https://example.com/journal" style="color:#1f2933;text-decoration:none">Journal</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="https://example.com/account" style="color:#1f2933;text-decoration:none">Account</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-hero mode="fixed-height" height="320px" background-width="600px" background-height="320px" background-url="https://example.com/img/hero.jpg" background-color="#134e4a" padding="80px 32px">
+      <mj-text mj-class="eyebrow" color="#ccfbf1" align="center">Spring sale</mj-text>
+      <mj-text align="center" color="#ffffff" font-size="36px" line-height="42px" font-weight="700">Up to 30% off everything for the garden</mj-text>
+      <mj-button href="https://example.com/sale?utm_source=newsletter&amp;utm_medium=email&amp;utm_campaign=spring" background-color="#ffffff" color="#134e4a">Shop the sale</mj-button>
+    </mj-hero>
+
+    <mj-section background-color="#ffffff" padding="32px 16px 8px" css-class="dark-bg">
+      <mj-column>
+        <mj-text mj-class="eyebrow">New this week</mj-text>
+        <mj-text font-size="24px" line-height="30px" font-weight="700" css-class="dark-text">Five new arrivals for slow mornings</mj-text>
+        <mj-text css-class="dark-text">Hi Sam, the potting bench has been busy. We have restocked the stoneware you kept asking about, and added a few pieces we think will see you through to summer.</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 16px" css-class="dark-bg stack-mobile">
+      <mj-column width="50%" padding="8px">
+        <mj-image src="https://example.com/img/planter.jpg" alt="Speckled stoneware planter" border-radius="8px" href="https://example.com/p/planter" />
+        <mj-text font-weight="600" css-class="product-name"><a href="https://example.com/p/planter">Speckled stoneware planter</a></mj-text>
+        <mj-text mj-class="muted">Hand thrown, with a drainage hole and saucer. 18 cm.</mj-text>
+        <mj-text font-weight="700">$34.00 <span style="color:#9aa5b1;text-decoration:line-through;font-weight:400">$48.00</span></mj-text>
+      </mj-column>
+      <mj-column width="50%" padding="8px">
+        <mj-image src="https://example.com/img/can.jpg" alt="Brass watering can" border-radius="8px" href="https://example.com/p/can" />
+        <mj-text font-weight="600" css-class="product-name"><a href="https://example.com/p/can">Brass watering can</a></mj-text>
+        <mj-text mj-class="muted">A long spout for reaching the back of the shelf. 1.5 litres.</mj-text>
+        <mj-text font-weight="700">$56.00</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 16px" css-class="dark-bg stack-mobile">
+      <mj-column width="50%" padding="8px">
+        <mj-image src="https://example.com/img/apron.jpg" alt="Waxed canvas apron" border-radius="8px" href="https://example.com/p/apron" />
+        <mj-text font-weight="600" css-class="product-name"><a href="https://example.com/p/apron">Waxed canvas apron</a></mj-text>
+        <mj-text mj-class="muted">Two deep pockets and adjustable straps. Wipes clean.</mj-text>
+        <mj-text font-weight="700">$42.00</mj-text>
+      </mj-column>
+      <mj-column width="50%" padding="8px">
+        <mj-image src="https://example.com/img/seeds.jpg" alt="Heirloom tomato seed set" border-radius="8px" href="https://example.com/p/seeds" />
+        <mj-text font-weight="600" css-class="product-name"><a href="https://example.com/p/seeds">Heirloom tomato seed set</a></mj-text>
+        <mj-text mj-class="muted">Six varieties, from Black Krim to Sungold, with growing notes.</mj-text>
+        <mj-text font-weight="700">$18.00</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="8px 16px 32px" css-class="dark-bg">
+      <mj-column>
+        <mj-button href="https://example.com/new">See all new arrivals</mj-button>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ecfdf5" padding="32px 16px">
+      <mj-column width="33.33%">
+        <mj-image src="https://example.com/img/icon-truck.png" alt="" width="40px" />
+        <mj-text align="center" font-weight="600">Free delivery</mj-text>
+        <mj-text align="center" mj-class="muted">On orders over $75, anywhere in the country.</mj-text>
+      </mj-column>
+      <mj-column width="33.33%">
+        <mj-image src="https://example.com/img/icon-return.png" alt="" width="40px" />
+        <mj-text align="center" font-weight="600">60 day returns</mj-text>
+        <mj-text align="center" mj-class="muted">Changed your mind? Send it back, no questions.</mj-text>
+      </mj-column>
+      <mj-column width="33.33%">
+        <mj-image src="https://example.com/img/icon-leaf.png" alt="" width="40px" />
+        <mj-text align="center" font-weight="600">Plastic free</mj-text>
+        <mj-text align="center" mj-class="muted">Everything ships in paper and card.</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="32px 16px" css-class="dark-bg">
+      <mj-column>
+        <mj-text mj-class="eyebrow">From the journal</mj-text>
+        <mj-text font-size="22px" line-height="28px" font-weight="700" css-class="dark-text">How to keep a houseplant alive through winter</mj-text>
+        <mj-text css-class="dark-text">Most houseplants that die in winter are loved to death. Light falls, growth slows, and a plant that drank every few days in July now sits in wet soil for a week. Water less, move pots closer to the window, and hold the fertiliser until spring.</mj-text>
+        <mj-text css-class="dark-text">Watch the leaves rather than the calendar: drooping that recovers within a day of watering means thirsty, while yellowing lower leaves usually mean too much. A cheap moisture meter takes out the guesswork.</mj-text>
+        <mj-button href="https://example.com/journal/winter-houseplants" background-color="#ffffff" color="#0f766e" border="2px solid #0f766e">Read the full guide</mj-button>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 16px 24px" css-class="dark-bg">
+      <mj-column>
+        <mj-divider border-color="#e4e7eb" border-width="1px" />
+        <mj-social font-size="14px" icon-size="24px" mode="horizontal" align="center">
+          <mj-social-element name="instagram" href="https://instagram.com/example">Instagram</mj-social-element>
+          <mj-social-element name="pinterest" href="https://pinterest.com/example">Pinterest</mj-social-element>
+          <mj-social-element name="facebook" href="https://facebook.com/example">Facebook</mj-social-element>
+        </mj-social>
+      </mj-column>
+    </mj-section>
+
+    <mj-section padding="24px 16px">
+      <mj-column>
+        <mj-text align="center" mj-class="muted" font-size="12px" line-height="18px" css-class="footer-links">
+          Bench &amp; Co., 12 Orchard Lane, Portland, OR 97201<br />
+          You are receiving this because you signed up at example.com.<br />
+          <a href="https://example.com/preferences?u=abc123">Update your preferences</a> or <a href="https://example.com/unsubscribe?u=abc123">unsubscribe</a>.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
