@@ -19,7 +19,7 @@ func (cv *conversion) dataRows(table *html.Node) [][]*html.Node {
 
 	var rows [][]*html.Node
 
-	for _, tr := range cv.visibleRows(table) {
+	data := cv.visibleRows(table, func(tr *html.Node) bool {
 		var cells []*html.Node
 
 		for c := tr.FirstChild; c != nil; c = c.NextSibling {
@@ -29,11 +29,11 @@ func (cv *conversion) dataRows(table *html.Node) [][]*html.Node {
 
 			// before contains walks the subtree, so layout tables are rejected cheaply
 			if len(rows) == 0 && c.DataAtom != atom.Th {
-				return nil
+				return false
 			}
 
 			if span(c, "rowspan") > 1 || contains(c, atom.Table) {
-				return nil
+				return false
 			}
 
 			cells = append(cells, c)
@@ -42,18 +42,20 @@ func (cv *conversion) dataRows(table *html.Node) [][]*html.Node {
 		if len(cells) > 0 {
 			rows = append(rows, cells)
 		}
-	}
 
-	if len(rows) == 0 || len(rows[0]) < 2 {
+		return true
+	})
+
+	if !data || len(rows) == 0 || len(rows[0]) < 2 {
 		return nil
 	}
 
 	return rows
 }
 
-func (cv *conversion) visibleRows(n *html.Node) []*html.Node {
-	var rows []*html.Node
-
+// visibleRows calls yield for each visible row of n, in order, stopping and
+// reporting false as soon as yield does
+func (cv *conversion) visibleRows(n *html.Node, yield func(*html.Node) bool) bool {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type != html.ElementNode || cv.isHidden(c) {
 			continue
@@ -61,13 +63,17 @@ func (cv *conversion) visibleRows(n *html.Node) []*html.Node {
 
 		switch c.DataAtom {
 		case atom.Tr:
-			rows = append(rows, c)
+			if !yield(c) {
+				return false
+			}
 		case atom.Thead, atom.Tbody, atom.Tfoot:
-			rows = append(rows, cv.visibleRows(c)...)
+			if !cv.visibleRows(c, yield) {
+				return false
+			}
 		}
 	}
 
-	return rows
+	return true
 }
 
 // span clamps to 1000, the HTML limit for colspan, so a hostile span can't
