@@ -7,8 +7,6 @@ the contents of an email. If this text is not included, email
 clients will automatically populate it using the text (including
 image alt text) at the start of the email's body.
 
-                  
-
 alt_text
 
 alt_text
@@ -46,8 +44,6 @@ Maecenas sed ante pellentesque, posuere leo id, eleifend dolor.
 alt_text
 
 Maecenas sed ante pellentesque, posuere leo id, eleifend dolor.
-
- 
 
 Maecenas sed ante pellentesque, posuere leo id, eleifend dolor.
 Class aptent taciti sociosqu ad litora torquent per conubia
