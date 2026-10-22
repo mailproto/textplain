@@ -652,6 +652,41 @@ func TestLinksWithinHeadings(t *testing.T) {
 	)
 }
 
+func TestRepeatedLinks(t *testing.T) {
+	runTestCases(t,
+		testCase{
+			name:   "an image and its caption link to the same page",
+			body:   `<a href="https://e.com/p"><img alt="Planter" src="p.png"></a><p><a href="https://e.com/p">planter</a></p>`,
+			expect: "Planter ( https://e.com/p )",
+		},
+		testCase{
+			name:   "an icon gives way to the text link after it",
+			body:   `<a href="https://ig.com/x"><img src="i.png" alt=""></a> <a href="https://ig.com/x">Instagram</a>`,
+			expect: "Instagram ( https://ig.com/x )",
+		},
+		testCase{
+			name:   "an icon after a text link adds nothing",
+			body:   `<a href="https://ig.com/x">Instagram</a><br><a href="https://ig.com/x"><img src="i.png"></a>`,
+			expect: "Instagram ( https://ig.com/x )",
+		},
+		testCase{
+			name:   "different text to the same page is kept",
+			body:   `<a href="https://e.com">Logo</a> <a href="https://e.com">Home</a>`,
+			expect: "Logo ( https://e.com ) Home ( https://e.com )",
+		},
+		testCase{
+			name:   "text between the links keeps both",
+			body:   `<a href="https://e.com">Shop</a> or <a href="https://e.com">Shop</a>`,
+			expect: "Shop ( https://e.com ) or Shop ( https://e.com )",
+		},
+		testCase{
+			name:   "a link rewritten by its heading is not taken as the last",
+			body:   `<h3><a href="https://e.com">Shop</a></h3><a href="https://e.com">Shop</a>`,
+			expect: "Shop ( https://e.com )\n----------------------\n\nShop ( https://e.com )",
+		},
+	)
+}
+
 func TestStripsNonContentTags(t *testing.T) {
 	runTestCases(t, testCase{
 		body: `<html>
@@ -1020,6 +1055,16 @@ func TestStruckText(t *testing.T) {
 			name:   "struck text is marked",
 			body:   `<p>Was <s>$20</s> now $15</p><p><del>a</del><strike>b</strike></p>`,
 			expect: "Was ~~$20~~ now $15\n\n~~a~~~~b~~",
+		},
+		testCase{
+			name:   "spans struck by style are marked",
+			body:   `<p>$34.00 <span style="color:#999;Text-Decoration: line-through red">$48.00 </span>today</p><p><span style="text-decoration-line:line-through">x</span></p>`,
+			expect: "$34.00 ~~$48.00~~ today\n\n~~x~~",
+		},
+		testCase{
+			name:   "other decorations are not",
+			body:   `<p><span style="text-decoration:underline">a</span> <span style="text-decoration">b</span></p>`,
+			expect: "a b",
 		},
 	)
 }

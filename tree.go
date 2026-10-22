@@ -62,6 +62,14 @@ type conversion struct {
 	opts   options
 	links  []string
 	quotes int
+	last   writtenLink
+}
+
+// writtenLink is the most recent link written and where it sits in the output
+type writtenLink struct {
+	text, href string
+	hasImg     bool
+	start, end int
 }
 
 // Convert renders the body of document as plain text, wrapping at
@@ -600,8 +608,55 @@ func (cv *conversion) lineBreak(o *output) {
 	o.write("\n")
 }
 
-// link renders an anchor according to the chosen style
+// link writes an anchor unless the link just before it, with only space between,
+// already points at the same target, as an image and the caption under it often
+// do. A link that is only an image gives way to a text link that follows it.
 func (cv *conversion) link(o *output, text, href string, hasImg bool) {
+	if cv.last.href == href && cv.adjacent(o) {
+		switch {
+		case text == "" || strings.EqualFold(text, cv.last.text):
+			return
+		case cv.last.text == "":
+			gap := string(o.buf.Bytes()[cv.last.end:])
+			o.buf.Truncate(cv.last.start)
+			o.write(gap)
+		}
+	}
+
+	start := o.buf.Len()
+	cv.renderLink(o, text, href, hasImg)
+
+	if o.buf.Len() > start {
+		cv.last = writtenLink{text: text, href: href, hasImg: hasImg, start: start, end: o.buf.Len()}
+	}
+}
+
+// adjacent reports whether the last link written still ends the output, give or
+// take space. Blocks rewrite their contents, so it is rendered again to check.
+func (cv *conversion) adjacent(o *output) bool {
+	if cv.last.end > o.buf.Len() || !onlySpace(o.buf.Bytes()[cv.last.end:]) {
+		return false
+	}
+
+	m := o.mark()
+	cv.renderLink(o, cv.last.text, cv.last.href, cv.last.hasImg)
+	rendered := o.take(m)
+
+	return string(o.buf.Bytes()[cv.last.start:cv.last.end]) == rendered
+}
+
+func onlySpace(b []byte) bool {
+	for _, c := range b {
+		if c != ' ' && c != '\t' && c != '\n' && c != hardBreak[0] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// renderLink writes an anchor according to the chosen style
+func (cv *conversion) renderLink(o *output, text, href string, hasImg bool) {
 	if cv.opts.markdown && cv.opts.links != LinksOmitted {
 		cv.markdownLink(o, text, href, hasImg)
 
@@ -915,6 +970,11 @@ func (cv *conversion) wrapSpans(o *output, n *html.Node) (*html.Node, bool) {
 			m := o.mark()
 			cv.doConvert(o, c)
 
+			// builders strike a former price with a style rather than <del>
+			if struckByStyle(getAttr(c, "style")) {
+				o.write(emphasized(o.take(m), "~~"))
+			}
+
 			if o.trimTail(m) {
 				span = " "
 			}
@@ -1038,6 +1098,21 @@ func (cv *conversion) isHidden(n *html.Node) bool {
 
 // font-size:0 is left out: it is inherited and descendants reset it, as in the
 // inline-block gap fix that wraps whole layouts
+func struckByStyle(style string) bool {
+	for declaration := range strings.SplitSeq(style, ";") {
+		property, value, _ := strings.Cut(declaration, ":")
+
+		switch strings.ToLower(strings.TrimSpace(property)) {
+		case "text-decoration", "text-decoration-line":
+			if strings.Contains(strings.ToLower(value), "line-through") {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func hiddenByStyle(style string) bool {
 	var zeroHeight, overflowHidden bool
 
