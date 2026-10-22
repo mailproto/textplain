@@ -953,14 +953,16 @@ func fixSpacing(rt string) string {
 
 		keep := true
 
+		// a no-break space only means something between words, so at the edge of
+		// a line or in a run of spaces it is spacing like any other
 		switch {
-		case last == '\n' && (v == '\t' || v == ' '):
+		case last == '\n' && (v == '\t' || isSpaceOrNBSP(v)):
 			keep = false
 		case last == '\n' && beforeLast == '\n' && v == '\n':
 			keep = false
-		case last == ' ' && v == ' ':
+		case isSpaceOrNBSP(last) && isSpaceOrNBSP(v):
 			keep = false
-		case last == ' ' && (v == '\t' || v == '\n'):
+		case isSpaceOrNBSP(last) && (v == '\t' || v == '\n'):
 			last = '\n'
 			keep = false
 		}
@@ -977,6 +979,10 @@ func fixSpacing(rt string) string {
 	out.WriteRune(last)
 
 	return out.String()
+}
+
+func isSpaceOrNBSP(r rune) bool {
+	return r == ' ' || r == ' '
 }
 
 func isPreheaderMark(r rune) bool {

@@ -11,7 +11,7 @@ import (
 func FuzzFixSpacing(f *testing.F) {
 	for _, seed := range []string{
 		"", " ", "a", "\n\n\n", "* a\n\n* b", "a  \n  b", "\u2007\u034f a \u00ad b",
-		"* one\n\nprose\n\n* two\n", "a\n\t\n\tb", "é日😀 \n\t*",
+		"* one\n\nprose\n\n* two\n", "a\n\t\n\tb", "é日😀 \n\t*", "a\n   \n\nb \n",
 	} {
 		f.Add(seed)
 	}
@@ -31,6 +31,8 @@ func FuzzFixSpacing(f *testing.F) {
 			rest := out[size:]
 			assert.NotContains(t, rest, "\n ", "a line is left with leading space")
 			assert.NotContains(t, rest, "\n\t", "a line is left with leading tab")
+			assert.NotContains(t, rest, "\n ", "a line is left with a leading no-break space")
+			assert.NotContains(t, rest, " \n", "a line is left with a trailing no-break space")
 			assert.NotContains(t, rest, "\n\n\n", "more than one blank line survived")
 		}
 	})
