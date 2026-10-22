@@ -29,23 +29,23 @@ type options struct {
 	hiddenContent bool
 }
 
-func newOptions(opts []Option) options {
-	o := options{
+// set applies opts over the defaults, in place so that o need not escape to
+// the heap on its own
+func (o *options) set(opts []Option) {
+	*o = options{
 		lineLength:    DefaultLineLength,
 		bullet:        "* ",
 		orderedSuffix: ". ",
 	}
 
 	for _, apply := range opts {
-		apply(&o)
+		apply(o)
 	}
 
 	// wrapping could start a line with something that reads as markup
 	if o.markdown {
 		o.lineLength = 0
 	}
-
-	return o
 }
 
 // WithLineLength wraps at the given number of columns, where wide characters
