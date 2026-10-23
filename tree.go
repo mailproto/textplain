@@ -257,11 +257,11 @@ func (cv *conversion) doConvert(o *output, n *html.Node) {
 
 				continue
 			case atom.Li:
-				o.write(cv.listItem(o, c, cv.opts.bullet))
+				cv.listItem(o, c, cv.opts.bullet)
 
 				continue
 			case atom.Dt, atom.Dd:
-				o.write(cv.listItem(o, c, ""))
+				cv.listItem(o, c, "")
 
 				continue
 			case atom.Table:
@@ -917,7 +917,7 @@ func (cv *conversion) listItems(o *output, n *html.Node, prefixer func(int) stri
 
 		switch c.DataAtom {
 		case atom.Li:
-			o.write(cv.listItem(o, c, prefixer(idx)))
+			cv.listItem(o, c, prefixer(idx))
 			idx += step
 		default:
 			cv.doConvert(o, c)
@@ -925,39 +925,38 @@ func (cv *conversion) listItems(o *output, n *html.Node, prefixer func(int) stri
 	}
 }
 
-func (cv *conversion) listItem(o *output, n *html.Node, prefix string) string {
+// listItem converts an item in place, assembling it in the output's scratch
+// buffer so that no level of nesting allocates a copy of its contents
+func (cv *conversion) listItem(o *output, n *html.Node, prefix string) {
 	m := o.mark()
 	cv.doConvert(o, n)
 
-	content := strings.Trim(o.take(m), "\n")
+	content := bytes.Trim(o.buf.Bytes()[m.length:], "\n")
 
 	// everything after the first line came from a nested list and belongs one
 	// level further in; marks already present deepen as they bubble up
-	first, nested, _ := strings.Cut(content, "\n")
+	first, nested, _ := bytes.Cut(content, []byte("\n"))
 
 	// Markdown nests under the item's content, so the indent covers the whole marker
 	indent := indentMark
 	if cv.opts.markdown {
-		first = escapeLead(strings.TrimLeft(first, " \t"))
+		first = []byte(escapeLead(string(bytes.TrimLeft(first, " \t"))))
 		indent = strings.Repeat(indentMark, (utf8.RuneCountInString(prefix)+1)/2)
 	}
 
-	var out strings.Builder
+	out := append(append(o.scratch[:0], prefix...), first...)
+	out = append(append(out[:0], bytes.TrimSpace(out)...), '\n')
 
-	out.WriteString(strings.TrimSpace(prefix + first))
-	out.WriteString("\n")
-
-	for line := range strings.SplitSeq(nested, "\n") {
-		if strings.TrimSpace(line) == "" {
+	for line := range bytes.SplitSeq(nested, []byte("\n")) {
+		if len(bytes.TrimSpace(line)) == 0 {
 			continue
 		}
 
-		out.WriteString(indent)
-		out.WriteString(strings.TrimLeft(line, " \t"))
-		out.WriteString("\n")
+		out = append(append(append(out, indent...), bytes.TrimLeft(line, " \t")...), '\n')
 	}
 
-	return out.String()
+	o.scratch = out
+	o.replace(m, out)
 }
 
 // wrapSpans consumes a run of sibling spans, returning the node to resume from
