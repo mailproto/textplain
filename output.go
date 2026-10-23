@@ -102,9 +102,14 @@ func (o *output) wrote(m mark) {
 	}
 }
 
-// take returns everything written since the mark and rewinds to it
+// take returns everything written since the mark and rewinds to it. When that
+// is just the last string written, as for a link around one text node, the
+// string is returned rather than copied.
 func (o *output) take(m mark) string {
-	taken := string(o.buf.Bytes()[m.length:])
+	taken := o.last
+	if written := o.buf.Bytes()[m.length:]; string(written) != taken {
+		taken = string(written)
+	}
 
 	o.buf.Truncate(m.length)
 	o.writes, o.last = m.writes, m.last

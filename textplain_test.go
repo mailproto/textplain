@@ -136,6 +136,18 @@ func TestNestedSpansAreNotCopiedPerLevel(t *testing.T) {
 	assert.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(20*len(text)))
 }
 
+func TestLinkTextIsNotCopied(t *testing.T) {
+	doc := strings.Repeat(`<p><a href="https://e.com/a">Shop now</a> <a href="https://e.com/b"><span>View</span></a></p>`, 100)
+
+	root, err := nethtml.Parse(strings.NewReader(doc))
+	require.NoError(t, err)
+
+	// a link's text is the string its one text node already holds
+	assert.Less(t, testing.AllocsPerRun(10, func() {
+		_, _ = textplain.ConvertNode(root, textplain.WithLineLength(0))
+	}), 20.0)
+}
+
 func TestNestedListsAreNotCopiedPerLevel(t *testing.T) {
 	text := strings.Repeat("word ", 20000)
 	doc := strings.Repeat("<ul><li>", 200) + text + strings.Repeat("</li></ul>", 200)
