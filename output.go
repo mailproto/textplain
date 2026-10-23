@@ -13,6 +13,9 @@ type output struct {
 	buf    bytes.Buffer
 	last   string
 	writes int
+
+	// scratch is where text rewritten in place is assembled before going back
+	scratch []byte
 }
 
 // maxPooled keeps one huge document from pinning its buffer in the pool
@@ -26,7 +29,7 @@ func newOutput() *output {
 
 // release returns o to the pool; nothing may use it afterwards
 func (o *output) release() {
-	if o.buf.Cap() > maxPooled {
+	if o.buf.Cap() > maxPooled || cap(o.scratch) > maxPooled {
 		return
 	}
 
@@ -77,6 +80,26 @@ func (o *output) trimTail(m mark) bool {
 	o.buf.Truncate(m.length + len(trimmed))
 
 	return true
+}
+
+// replace swaps everything written since the mark for b, counting it as one
+// write, as if it had been taken and b written in its place
+func (o *output) replace(m mark, b []byte) {
+	o.buf.Truncate(m.length)
+	o.buf.Write(b)
+	o.wrote(m)
+}
+
+// wrote counts everything written since the mark as a single write. Only
+// whether that write ended a line matters to needsBreak, so last is set to
+// stand in for it rather than copied out.
+func (o *output) wrote(m mark) {
+	o.writes = m.writes + 1
+	o.last = ""
+
+	if trimmed := bytes.Trim(o.buf.Bytes()[m.length:], " \t"); len(trimmed) > 0 && trimmed[len(trimmed)-1] == '\n' {
+		o.last = "\n"
+	}
 }
 
 // take returns everything written since the mark and rewinds to it

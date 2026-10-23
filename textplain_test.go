@@ -136,6 +136,23 @@ func TestNestedSpansAreNotCopiedPerLevel(t *testing.T) {
 	assert.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(20*len(text)))
 }
 
+func TestNestedListsAreNotCopiedPerLevel(t *testing.T) {
+	text := strings.Repeat("word ", 20000)
+	doc := strings.Repeat("<ul><li>", 200) + text + strings.Repeat("</li></ul>", 200)
+
+	var before, after runtime.MemStats
+
+	runtime.ReadMemStats(&before)
+	result, err := textplain.Convert(doc, textplain.WithLineLength(0))
+	runtime.ReadMemStats(&after)
+
+	require.NoError(t, err)
+	assert.Equal(t, strings.Repeat("* ", 200)+strings.TrimSpace(text), result)
+
+	// a copy per level would allocate 200 times the text
+	assert.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(20*len(text)))
+}
+
 func TestWrappingSpans(t *testing.T) {
 	runTestCases(t,
 		testCase{
