@@ -8,6 +8,11 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  # GitHub drops push events during outages, so main is also checked daily,
+  # which catches new vulnerabilities and fuzzes for longer
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -61,7 +66,7 @@ jobs:
         go-version-input: stable
 
   fuzz:
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -75,4 +80,4 @@ jobs:
         go-version: stable
 
     - name: Fuzz
-      run: go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime 30s .
+      run: go test -run '^$' -fuzz '^${{ matrix.target }}$' -fuzztime ${{ github.event_name == 'schedule' && '5m' || '30s' }} .
