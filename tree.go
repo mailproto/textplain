@@ -2,7 +2,9 @@ package textplain
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -108,7 +110,7 @@ func ConvertReader(r io.Reader, opts ...Option) (string, error) {
 // ConvertNode is Convert for a document already parsed with html.Parse, for a
 // caller that has the tree and would otherwise render it only to have it parsed
 // again. It does not modify the tree.
-func ConvertNode(root *html.Node, opts ...Option) (string, error) {
+func ConvertNode(root *html.Node, opts ...Option) (text string, err error) {
 	body := findBody(root)
 	if body == nil {
 		return "", ErrBodyNotFound
@@ -118,14 +120,24 @@ func ConvertNode(root *html.Node, opts ...Option) (string, error) {
 	cv.opts.set(opts)
 
 	o := newOutput()
-	defer o.release()
+
+	// a panicked buffer is left out of the pool, since its state is unknown
+	defer func() {
+		if r := recover(); r != nil {
+			text, err = "", fmt.Errorf("%w: %v\n%s", ErrInternal, r, debug.Stack())
+
+			return
+		}
+
+		o.release()
+	}()
 
 	cv.doConvert(o, body)
 
 	// read straight from the buffer, which is not released until this returns
 	preformatted, raw := extractPre(o.buf.Bytes())
 
-	text := fixSpacing(raw)
+	text = fixSpacing(raw)
 
 	if cv.opts.markdown {
 		text = settleMarkdown(text)

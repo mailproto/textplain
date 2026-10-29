@@ -66,11 +66,10 @@ jobs:
         go-version-input: stable
 
   fuzz:
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [ FuzzWordWrap, FuzzFixSpacing, FuzzConvert ]
+        target: [ FuzzWordWrap, FuzzFixSpacing, FuzzConvert, FuzzConvertStructured ]
     steps:
     - uses: actions/checkout@v7
 
