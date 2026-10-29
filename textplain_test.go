@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	nethtml "golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 type testCase struct {
@@ -718,6 +719,21 @@ func TestRepeatedLinks(t *testing.T) {
 			body:   `<h3><a href="https://e.com">Shop</a></h3><a href="https://e.com">Shop</a>`,
 			expect: "Shop ( https://e.com )\n----------------------\n\nShop ( https://e.com )",
 		},
+		testCase{
+			name:   "an icon is kept rather than cut from before a span around the text link",
+			body:   `<p><a href="https://x.io"><img src="a.png"></a> <span><a href="https://x.io">https://x.io</a> </span></p>`,
+			expect: "( https://x.io ) https://x.io",
+		},
+		testCase{
+			name:   "an icon is kept rather than cut from before a heading around the text link",
+			body:   `<a href="https://x.io"><img src="a.png"></a> <h1><a href="https://x.io">https://x.io</a></h1>`,
+			expect: "( https://x.io )\n\n************\nhttps://x.io\n************",
+		},
+		testCase{
+			name:   "an icon is kept rather than cut from before a struck span around the text link",
+			body:   `<a href="https://x.io"><img src="a.png"></a> <span style="text-decoration:line-through"><a href="https://x.io">https://x.io</a></span>`,
+			expect: "( https://x.io ) ~~https://x.io~~",
+		},
 	)
 }
 
@@ -896,6 +912,20 @@ func TestConvertNode(t *testing.T) {
 		require.NoError(t, err)
 		_, err = textplain.ConvertNode(root)
 		require.ErrorIs(t, err, textplain.ErrBodyNotFound)
+	})
+
+	t.Run("a panic is returned as an error", func(t *testing.T) {
+		t.Parallel()
+		// built by hand without PrevSibling links, which html.Parse always sets
+		body := &nethtml.Node{Type: nethtml.ElementNode, DataAtom: atom.Body, Data: "body"}
+		span := &nethtml.Node{Type: nethtml.ElementNode, DataAtom: atom.Span, Data: "span", Parent: body}
+		div := &nethtml.Node{Type: nethtml.ElementNode, DataAtom: atom.Div, Data: "div", Parent: body}
+		body.FirstChild, body.LastChild, span.NextSibling = span, div, div
+
+		_, err := textplain.ConvertNode(body)
+
+		require.ErrorIs(t, err, textplain.ErrInternal)
+		assert.Contains(t, err.Error(), "nil pointer dereference")
 	})
 }
 
@@ -1491,35 +1521,86 @@ func FuzzConvert(f *testing.F) {
   indented</pre><p>quoted <q>words</q></p></blockquote><hr><p>x<sup>2</sup> H<sub>2</sub>O <del>old</del></p>`,
 		`<div style="display:none">hidden</div><p>&nbsp;</p><span>a <span>b </span></span><img alt="alt" src="i.png">`,
 		"<p>日本語のテキスト、そして English words&#1;\x02&#7;\x08 <abbr title=\"x\">y</abbr><br>next</p>",
+		`<p><a href="https://x.io"><img src="a.png"></a> <span><a href="https://x.io">https://x.io</a> </span></p>`,
 	} {
 		for flags := range uint8(8) {
 			f.Add(seed, flags)
 		}
 	}
 
-	f.Fuzz(func(t *testing.T, doc string, flags uint8) {
-		var opts []textplain.Option
-		if flags&1 != 0 {
-			opts = append(opts, textplain.WithMarkdown())
+	f.Fuzz(fuzzConvert)
+}
+
+// FuzzConvertStructured builds documents from a few elements and two link
+// targets, reaching combinations such as two links to one page that mutating
+// bytes rarely produces
+func FuzzConvertStructured(f *testing.F) {
+	f.Add([]byte{0, 3, 4, 1, 5}, uint8(0))
+
+	hrefs := []string{"https://x.io", "https://y.io"}
+	elements := []string{"span", "b", "em", "del", "h1", "h3", "li", "ul", "ol", "p", "div", "blockquote", "td", "tr", "table", "pre", "code", "sup", "q", `span style="text-decoration:line-through"`}
+
+	f.Fuzz(func(t *testing.T, ops []byte, flags uint8) {
+		var doc strings.Builder
+		var open []string
+
+		// the low three bits pick what to write, the rest which target or element
+		for _, op := range ops {
+			href := hrefs[op>>7]
+
+			switch op & 7 {
+			case 0:
+				doc.WriteString(`<a href="` + href + `"><img src="a.png"></a>`)
+			case 1:
+				doc.WriteString(`<a href="` + href + `">` + href + `</a>`)
+			case 2:
+				doc.WriteString(`<a href="` + href + `">Visit</a>`)
+			case 3:
+				doc.WriteString(" ")
+			case 4:
+				el := elements[int(op>>3)%len(elements)]
+				doc.WriteString("<" + el + ">")
+				open = append(open, strings.Fields(el)[0])
+			case 5:
+				if len(open) > 0 {
+					doc.WriteString("</" + open[len(open)-1] + ">")
+					open = open[:len(open)-1]
+				}
+			case 6:
+				doc.WriteString("<br>")
+			case 7:
+				doc.WriteString("text")
+			}
 		}
 
-		if flags&2 != 0 {
-			opts = append(opts, textplain.WithLinks(textplain.LinksFootnotes))
-		}
-
-		if flags&4 != 0 {
-			opts = append(opts, textplain.WithLineLength(int(flags>>3)+1))
-		}
-
-		result, err := textplain.Convert(doc, opts...)
-		if err != nil {
-			return
-		}
-
-		if utf8.ValidString(doc) {
-			assert.True(t, utf8.ValidString(result), "output is not valid utf-8")
-		}
-
-		assert.False(t, strings.ContainsFunc(result, func(r rune) bool { return r <= '\x08' }), "a marker leaked into the output")
+		fuzzConvert(t, doc.String(), flags)
 	})
+}
+
+func fuzzConvert(t *testing.T, doc string, flags uint8) {
+	var opts []textplain.Option
+	if flags&1 != 0 {
+		opts = append(opts, textplain.WithMarkdown())
+	}
+
+	if flags&2 != 0 {
+		opts = append(opts, textplain.WithLinks(textplain.LinksFootnotes))
+	}
+
+	if flags&4 != 0 {
+		opts = append(opts, textplain.WithLineLength(int(flags>>3)+1))
+	}
+
+	result, err := textplain.Convert(doc, opts...)
+	require.NotErrorIs(t, err, textplain.ErrInternal)
+
+	if err != nil {
+		return
+	}
+
+	if utf8.ValidString(doc) {
+		assert.True(t, utf8.ValidString(result), "output is not valid utf-8")
+	}
+
+	assert.False(t, strings.ContainsFunc(result, func(r rune) bool { return r <= '\x08' }), "a marker leaked into the output")
 }

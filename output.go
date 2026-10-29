@@ -14,6 +14,10 @@ type output struct {
 	last   string
 	writes int
 
+	// floor is where the innermost open mark began, below which nothing may be
+	// rewritten
+	floor int
+
 	// scratch is where text rewritten in place is assembled before going back
 	scratch []byte
 }
@@ -34,7 +38,7 @@ func (o *output) release() {
 	}
 
 	o.buf.Reset()
-	o.writes, o.last = 0, ""
+	o.writes, o.last, o.floor = 0, "", 0
 	outputs.Put(o)
 }
 
@@ -61,15 +65,20 @@ type mark struct {
 	length int
 	writes int
 	last   string
+	floor  int
 }
 
 func (o *output) mark() mark {
-	return mark{length: o.buf.Len(), writes: o.writes, last: o.last}
+	m := mark{length: o.buf.Len(), writes: o.writes, last: o.last, floor: o.floor}
+	o.floor = m.length
+
+	return m
 }
 
 // trimTail drops trailing whitespace written since the mark, reporting whether
-// there was any
+// there was any, and closes the mark
 func (o *output) trimTail(m mark) bool {
+	o.floor = m.floor
 	written := o.buf.Bytes()[m.length:]
 
 	trimmed := bytes.TrimRight(written, "\n\t ")
@@ -85,6 +94,7 @@ func (o *output) trimTail(m mark) bool {
 // replace swaps everything written since the mark for b, counting it as one
 // write, as if it had been taken and b written in its place
 func (o *output) replace(m mark, b []byte) {
+	o.floor = m.floor
 	o.buf.Truncate(m.length)
 	o.buf.Write(b)
 	o.wrote(m)
@@ -112,7 +122,7 @@ func (o *output) take(m mark) string {
 	}
 
 	o.buf.Truncate(m.length)
-	o.writes, o.last = m.writes, m.last
+	o.writes, o.last, o.floor = m.writes, m.last, m.floor
 
 	return taken
 }

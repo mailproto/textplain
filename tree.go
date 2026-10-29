@@ -2,7 +2,9 @@ package textplain
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -108,7 +110,7 @@ func ConvertReader(r io.Reader, opts ...Option) (string, error) {
 // ConvertNode is Convert for a document already parsed with html.Parse, for a
 // caller that has the tree and would otherwise render it only to have it parsed
 // again. It does not modify the tree.
-func ConvertNode(root *html.Node, opts ...Option) (string, error) {
+func ConvertNode(root *html.Node, opts ...Option) (text string, err error) {
 	body := findBody(root)
 	if body == nil {
 		return "", ErrBodyNotFound
@@ -118,14 +120,24 @@ func ConvertNode(root *html.Node, opts ...Option) (string, error) {
 	cv.opts.set(opts)
 
 	o := newOutput()
-	defer o.release()
+
+	// a panicked buffer is left out of the pool, since its state is unknown
+	defer func() {
+		if r := recover(); r != nil {
+			text, err = "", fmt.Errorf("%w: %v\n%s", ErrInternal, r, debug.Stack())
+
+			return
+		}
+
+		o.release()
+	}()
 
 	cv.doConvert(o, body)
 
 	// read straight from the buffer, which is not released until this returns
 	preformatted, raw := extractPre(o.buf.Bytes())
 
-	text := fixSpacing(raw)
+	text = fixSpacing(raw)
 
 	if cv.opts.markdown {
 		text = settleMarkdown(text)
@@ -620,13 +632,14 @@ func (cv *conversion) lineBreak(o *output) {
 
 // link writes an anchor unless the link just before it, with only space between,
 // already points at the same target, as an image and the caption under it often
-// do. A link that is only an image gives way to a text link that follows it.
+// do. A link that is only an image gives way to a text link that follows it,
+// unless an element opened since would have its start cut away.
 func (cv *conversion) link(o *output, text, href string, hasImg bool) {
 	if cv.last.href == href && cv.adjacent(o) {
 		switch {
 		case text == "" || strings.EqualFold(text, cv.last.text):
 			return
-		case cv.last.text == "":
+		case cv.last.text == "" && cv.last.start >= o.floor:
 			gap := string(o.buf.Bytes()[cv.last.end:])
 			o.buf.Truncate(cv.last.start)
 			o.write(gap)

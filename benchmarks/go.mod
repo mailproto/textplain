@@ -11,7 +11,7 @@ require (
 	github.com/k3a/html2text v1.5.1
 	github.com/mailproto/textplain v0.4.0
 	github.com/mattn/godown v0.0.1
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 )
 
 require (
