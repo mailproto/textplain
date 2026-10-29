@@ -328,6 +328,11 @@ func TestLists(t *testing.T) {
 			body:   "<ul><li>one</li></ul><br/><p>prose</p><ul><li>two</li></ul>",
 			expect: "* one\n\nprose\n\n* two",
 		},
+		testCase{
+			name:   "list after inline content starts its own line",
+			body:   `<a href="https://x.io"><img src="a.png"></a><ul><li><a href="https://y.io">Visit</a></li></ul>`,
+			expect: "( https://x.io )\n* Visit ( https://y.io )",
+		},
 	)
 }
 
@@ -979,7 +984,7 @@ func TestTables(t *testing.T) {
 		testCase{
 			name:   "block content in a cell falls back to plain cells",
 			body:   `<table><tr><th>Name</th><th>Items</th></tr><tr><td>A</td><td><ul><li>x</li><li>y</li></ul></td></tr></table>`,
-			expect: "Name Items\nA * x\n* y",
+			expect: "Name Items\nA\n* x\n* y",
 		},
 		testCase{
 			name:   "one block or a trailing break in a cell is still one line",
