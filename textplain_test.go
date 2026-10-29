@@ -713,6 +713,21 @@ func TestRepeatedLinks(t *testing.T) {
 			body:   `<h3><a href="https://e.com">Shop</a></h3><a href="https://e.com">Shop</a>`,
 			expect: "Shop ( https://e.com )\n----------------------\n\nShop ( https://e.com )",
 		},
+		testCase{
+			name:   "an icon is kept rather than cut from before a span around the text link",
+			body:   `<p><a href="https://x.io"><img src="a.png"></a> <span><a href="https://x.io">https://x.io</a> </span></p>`,
+			expect: "( https://x.io ) https://x.io",
+		},
+		testCase{
+			name:   "an icon is kept rather than cut from before a heading around the text link",
+			body:   `<a href="https://x.io"><img src="a.png"></a> <h1><a href="https://x.io">https://x.io</a></h1>`,
+			expect: "( https://x.io )\n\n************\nhttps://x.io\n************",
+		},
+		testCase{
+			name:   "an icon is kept rather than cut from before a struck span around the text link",
+			body:   `<a href="https://x.io"><img src="a.png"></a> <span style="text-decoration:line-through"><a href="https://x.io">https://x.io</a></span>`,
+			expect: "( https://x.io ) ~~https://x.io~~",
+		},
 	)
 }
 
@@ -1486,6 +1501,7 @@ func FuzzConvert(f *testing.F) {
   indented</pre><p>quoted <q>words</q></p></blockquote><hr><p>x<sup>2</sup> H<sub>2</sub>O <del>old</del></p>`,
 		`<div style="display:none">hidden</div><p>&nbsp;</p><span>a <span>b </span></span><img alt="alt" src="i.png">`,
 		"<p>日本語のテキスト、そして English words&#1;\x02&#7;\x08 <abbr title=\"x\">y</abbr><br>next</p>",
+		`<p><a href="https://x.io"><img src="a.png"></a> <span><a href="https://x.io">https://x.io</a> </span></p>`,
 	} {
 		for flags := range uint8(8) {
 			f.Add(seed, flags)

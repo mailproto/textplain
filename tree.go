@@ -620,13 +620,14 @@ func (cv *conversion) lineBreak(o *output) {
 
 // link writes an anchor unless the link just before it, with only space between,
 // already points at the same target, as an image and the caption under it often
-// do. A link that is only an image gives way to a text link that follows it.
+// do. A link that is only an image gives way to a text link that follows it,
+// unless an element opened since would have its start cut away.
 func (cv *conversion) link(o *output, text, href string, hasImg bool) {
 	if cv.last.href == href && cv.adjacent(o) {
 		switch {
 		case text == "" || strings.EqualFold(text, cv.last.text):
 			return
-		case cv.last.text == "":
+		case cv.last.text == "" && cv.last.start >= o.floor:
 			gap := string(o.buf.Bytes()[cv.last.end:])
 			o.buf.Truncate(cv.last.start)
 			o.write(gap)
