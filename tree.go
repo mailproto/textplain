@@ -928,6 +928,10 @@ func (cv *conversion) listItems(o *output, n *html.Node, prefixer func(int) stri
 // listItem converts an item in place, assembling it in the output's scratch
 // buffer so that no level of nesting allocates a copy of its contents
 func (cv *conversion) listItem(o *output, n *html.Node, prefix string) {
+	if o.needsBreak() {
+		o.write("\n")
+	}
+
 	m := o.mark()
 	cv.doConvert(o, n)
 
